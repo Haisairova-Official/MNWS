@@ -1,0 +1,29 @@
+{
+  "include": [
+    "modules.jsonc"
+  ],
+  "layer": "bottom",
+  "reload_style_on_change": true,
+  "modes": {
+    "invisible": {
+      "visible": true,
+      "passthrough": true,
+      "exclusive": true
+    }
+  },
+  "position": "bottom",
+  "height": 36,
+  "margin-bottom": 8,
+  "margin-left": 8,
+  "margin-right": 8,
+  "spacing": 4,
+  "fixed-center": true,
+  "modules-left": [
+    "custom/applauncher"
+  ],
+  "modules-center": [],
+  "modules-right": [
+    "niri/workspaces",
+    "clock"
+  ]
+}

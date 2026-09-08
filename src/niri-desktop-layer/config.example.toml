@@ -1,0 +1,27 @@
+# 复制到 ~/.config/niri-desktop-layer/config.toml 后生效。
+# 不配置 directory 时，读取 XDG 桌面目录。
+directory = ""
+# primary：主屏；all：所有屏幕；也可用 DP-1 或屏幕序号（从 0 开始）。
+monitor = "primary"
+icon_size = 48
+cell_width = 112
+cell_height = 104
+# 0 使用整个桌面画布；大于 0 时只显示指定列数的窄画布。
+columns = 0
+# 进入 Niri 总览时图标层的高斯模糊半径，0 关闭。
+overview_blur = 5
+margin = 18
+font_size = 10
+# 图标名称与菜单字体；本机为思源黑体的 Noto 版，可按已安装字体修改。
+font_family = "Noto Sans CJK SC"
+show_hidden = false
+single_click = false
+
+# 右键菜单可以随时更改，并保存到布局状态文件。
+sort_by = "name"
+sort_descending = false
+folders_first = true
+
+# 桌面图标层自己的可见性开关；空字符串关闭文件监听。
+# （与底部任务栏的 taskbar-hidden 分开，两者可独立显示/隐藏。）
+visibility_marker = "~/.local/state/desktop-hidden"

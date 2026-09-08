@@ -1,0 +1,22 @@
+[package]
+name = "niri-ipc"
+version = "26.4.0"
+authors = ["Ivan Molodetskikh <yalterz@gmail.com>"]
+license = "GPL-3.0-or-later"
+edition = "2021"
+repository = "https://github.com/niri-wm/niri"
+
+description = "Types and helpers for interfacing with the niri Wayland compositor."
+keywords = ["wayland"]
+categories = ["api-bindings", "os"]
+readme = "README.md"
+
+[dependencies]
+clap = { version = "4.6.6", features = ["derive"], optional = true }
+schemars = { version = "1.2.2", optional = true }
+serde = { version = "1.0.229", features = ["derive"] }
+serde_json = "1.0.151"
+
+[features]
+clap = ["dep:clap"]
+json-schema = ["dep:schemars"]

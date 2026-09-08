@@ -1,0 +1,21 @@
+{
+  "api": "mnws-plugin",
+  "apiVersion": 1,
+  "id": "org.mnws.hello",
+  "name": "Hello",
+  "version": "0.1.0",
+  "kind": "panel",
+  "language": "python",
+  "entry": "main.py",
+  "interfaces": [
+    "panel.json-v1"
+  ],
+  "author": "",
+  "description": "任务栏示例插件（panel.json-v1）",
+  "license": "MIT",
+  "defaults": {
+    "slot": "right",
+    "width": 0,
+    "interval": 1.0
+  }
+}

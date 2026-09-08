@@ -1,0 +1,36 @@
+{
+  "apiVersion": 1,
+  "comment": "底部任务栏组件布局。内置组件与 .mplg 插件都按 slot + order 渲染。",
+  "builtins": [
+    {
+      "id": "start",
+      "enabled": true,
+      "slot": "left",
+      "order": 0
+    },
+    {
+      "id": "windows",
+      "enabled": true,
+      "slot": "left",
+      "order": 1
+    },
+    {
+      "id": "workspaces",
+      "enabled": true,
+      "slot": "right",
+      "order": 1
+    },
+    {
+      "id": "clock",
+      "enabled": true,
+      "slot": "right",
+      "order": 2
+    }
+  ],
+  "plugins": [],
+  "options": {
+    "taskbar_library": null,
+    "desktop_space_library": null,
+    "keep_live_base": true
+  }
+}

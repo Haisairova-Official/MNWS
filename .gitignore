@@ -1,0 +1,14 @@
+__pycache__/
+*.py[cod]
+**/target/
+*.so
+*.mplg
+src/panel-rows/test-panel
+src/niri-desktop-layer/state/
+*.mnws-bak*
+*.bak
+.env
+.env.*
+!.env.example
+core
+core.*

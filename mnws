@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
+
+usage() {
+    cat <<EOF
+MNWS — My Niri Workspace Solution
+
+用法:
+  mnws config [--tab desktop|taskbar|components]   打开统一设置
+  mnws check                                       检查组件与配置状态
+  mnws build-taskbar                               重新编译底部任务栏模块
+  mnws restart taskbar|desktop                     重启组件
+  mnws install                                     安装配置与启动器
+  mnws autostart on|off|status                     桌面图标层随 Niri 登录自启
+  mnws layout show|render|apply                    任务栏组件布局（内置组件/.mplg 插件）
+  mnws mplg init|build|add|list|run|validate|...   .mplg 插件包工具
+  mnws help                                        显示帮助
+EOF
+}
+
+case "${1:-help}" in
+    config)
+        shift
+        exec python3 "$ROOT/tools/mnws-config.py" "$@"
+        ;;
+    check)
+        exec python3 "$ROOT/tools/mnws-config.py" --check
+        ;;
+    build-taskbar)
+        cd "$ROOT/src/niri-taskbar"
+        cargo build --release --offline
+        install -Dm644 target/release/libniri_taskbar.so "$HOME/.local/lib/waybar/libniri_taskbar.so"
+        echo "已复制 libniri_taskbar.so 到 ~/.local/lib/waybar/"
+        ;;
+    restart)
+        case "${2:-}" in
+            taskbar)
+                pkill -f '[c]onfig-bottom.jsonc' || true
+                sleep 0.4
+                env -u GDK_BACKEND setsid -f waybar \
+                    -c "$HOME/.config/waybar/config-bottom.jsonc" \
+                    -s "$HOME/.config/waybar/style-bottom.css"
+                ;;
+            desktop)
+                exec python3 "$ROOT/tools/mnws-config.py" --restart-desktop
+                ;;
+            *)
+                echo "用法: mnws restart taskbar|desktop" >&2
+                exit 2
+                ;;
+        esac
+        ;;
+    install)
+        exec bash "$ROOT/scripts/mnws-install.sh"
+        ;;
+    autostart)
+        action="${2:-status}"
+        exec python3 "$ROOT/tools/mnws-config.py" --autostart "$action"
+        ;;
+    layout|plugin|mplg)
+        command="${1:-}"
+        shift
+        case "$command" in
+            layout)
+                exec python3 "$ROOT/tools/mnws_layout.py" "$@"
+                ;;
+            plugin|mplg)
+                exec python3 "$ROOT/tools/mnws_plugin.py" "$@"
+                ;;
+        esac
+        ;;
+    help|-h|--help)
+        usage
+        ;;
+    *)
+        echo "未知命令: ${1:-}" >&2
+        usage >&2
+        exit 2
+        ;;
+esac

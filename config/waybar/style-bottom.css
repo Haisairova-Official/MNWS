@@ -1,0 +1,135 @@
+/* 底部任务栏样式（对应 config-bottom.jsonc） */
+@import "colors.css";
+
+* {
+    border: none;
+    border-radius: 0;
+    font-family: "JetBrainsMono Nerd Font Propo", "LXGW WenKai Screen", "JetBrains Maple Mono", "Font Awesome 7 Free";
+    font-size: 16.6px;
+    opacity: 1;
+}
+
+window#waybar {
+    /* 窗口保持透明，圆角画在内部容器上，避免 GTK3 圆角处变黑 */
+    background: transparent;
+    color: @on_surface;
+}
+
+window#waybar > box {
+    /* KDE 风格底栏：轻微圆角的圆角矩形 */
+    background: @surface_container_high;
+    border-radius: 0.7em;
+}
+
+tooltip {
+    background: @secondary_container;
+    border: 0.17em solid @outline;
+}
+
+tooltip label {
+    color: @on_surface;
+}
+
+/* 任务栏区域本身不再单独画底色，由整条底栏提供 */
+.niri-taskbar {
+    background: transparent;
+    padding: 0 0.35em;
+}
+
+.niri-taskbar button {
+    background: transparent;
+    border-radius: 0.7em;
+    padding: 0.12em 0.55em;
+    color: @on_surface;
+}
+
+.niri-taskbar button:hover {
+    background: @surface_container;
+}
+
+.niri-taskbar button.focused {
+    background: @primary;
+    color: @on_primary;
+}
+
+.niri-taskbar button.urgent {
+    background-color: @tertiary;
+}
+
+/* 开始菜单按钮 */
+#custom-applauncher {
+    background: transparent;
+    border-radius: 0.7em;
+    padding: 0.05em 0.7em 0.05em 0.8em;
+    font-size: 1.2em;
+    color: @on_surface;
+    min-width: 2.2em;
+}
+
+#custom-applauncher:hover {
+    background: @surface_container;
+}
+
+/* 托盘 */
+#tray {
+    background: transparent;
+    padding: 0 0.3em;
+}
+
+/* 时钟 */
+#clock {
+    background: transparent;
+    border-radius: 0.7em;
+    padding: 0.05em 0.9em 0.05em 0.4em;
+    color: @on_surface;
+    min-width: 4.5em;
+}
+
+/* 窗口图标滚动区：透明、不抢固定栏目的宽度；溢出时在内部横向滑动 */
+.niri-taskbar-scroll {
+    background: transparent;
+    border: none;
+    min-width: 0;
+}
+
+.niri-taskbar-scroll > * {
+    border: none;
+}
+
+/* Desktop toggle: fade the whole bar while Waybar handles input and reserved space. */
+window#waybar > box {
+    opacity: 1;
+    transition: opacity 220ms ease-in-out;
+}
+window#waybar.mode-invisible > box {
+    opacity: 0;
+}
+
+
+
+/* ==== MNWS 插件布局（自动生成）==== */
+#custom-mnws-org-mnws-neteaselyrics {
+    min-width: 260px;
+}
+/* ==== MNWS 插件布局 END ==== */
+
+/* ==== MNWS 任务栏样式（自动生成）==== */
+window#waybar > box {
+    background: @surface_container_high;
+    border-radius: 12px;
+}
+
+.niri-taskbar button {
+    border-radius: 12px;
+}
+
+/* MNWS 网易云歌词：固定预留宽度，歌词长短不推动其他组件。 */
+#custom-mnws-org-mnws-neteaselyrics {
+    padding: 0 10px;
+    color: @on_surface;
+    background: transparent;
+}
+#custom-mnws-org-mnws-neteaselyrics.paused,
+#custom-mnws-org-mnws-neteaselyrics.idle {
+    opacity: 0.6;
+}

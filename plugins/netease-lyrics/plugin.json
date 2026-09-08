@@ -1,0 +1,94 @@
+{
+  "api": "mnws-plugin",
+  "apiVersion": 1,
+  "id": "org.mnws.neteaselyrics",
+  "name": "网易云歌词",
+  "version": "0.3.0",
+  "kind": "panel",
+  "language": "python",
+  "entry": "main.py",
+  "interfaces": [
+    "panel.json-v1",
+    "panel.rows-v1"
+  ],
+  "description": "Firefox 网易云同步双语歌词：原文、细分隔线、译文。",
+  "license": "MIT",
+  "defaults": {
+    "slot": "right",
+    "width": 420,
+    "interval": 0,
+    "align": 0.5
+  },
+  "settingsSchema": [
+    {
+      "key": "font_family",
+      "label": "歌词字体",
+      "type": "font",
+      "default": ""
+    },
+    {
+      "key": "primary_color",
+      "label": "原文颜色",
+      "type": "color",
+      "default": ""
+    },
+    {
+      "key": "secondary_color",
+      "label": "译文颜色",
+      "type": "color",
+      "default": ""
+    },
+    {
+      "key": "separator_color",
+      "label": "分隔线颜色",
+      "type": "color",
+      "default": ""
+    },
+    {
+      "key": "offset_ms",
+      "label": "同步偏移（毫秒，正数提前）",
+      "type": "number",
+      "default": 0,
+      "min": -10000,
+      "max": 10000,
+      "step": 50
+    },
+    {
+      "key": "api_mode",
+      "label": "歌词来源",
+      "type": "choice",
+      "default": "netease",
+      "choices": [
+        [
+          "netease",
+          "网易云（默认）"
+        ],
+        [
+          "custom",
+          "自定义 API"
+        ]
+      ]
+    },
+    {
+      "key": "api_url",
+      "label": "API 地址模板",
+      "type": "url",
+      "default": "",
+      "hint": "支持 {id}、{title}、{artist}、{album}、{duration}；参数会自动编码。"
+    },
+    {
+      "key": "lyric_path",
+      "label": "JSON 原文字段",
+      "type": "string",
+      "default": "lrc.lyric",
+      "hint": "例如 lrc.lyric 或 syncedLyrics；接口直接返回 LRC 文本时无需填写。"
+    },
+    {
+      "key": "translation_path",
+      "label": "JSON 译文字段",
+      "type": "string",
+      "default": "tlyric.lyric",
+      "hint": "例如 tlyric.lyric；没有翻译可留空。"
+    }
+  ]
+}

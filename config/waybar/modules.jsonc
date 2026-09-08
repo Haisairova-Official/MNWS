@@ -1,0 +1,15 @@
+{
+  "custom/applauncher": {
+    "format": "Apps",
+    "tooltip": false,
+    "on-click": "rofi -show drun"
+  },
+  "clock": {
+    "format": "{:%H:%M}",
+    "tooltip-format": "{:%Y-%m-%d %A}"
+  },
+  "niri/workspaces": {
+    "format": "{value}",
+    "disable-scroll": false
+  }
+}
