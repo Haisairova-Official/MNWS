@@ -2,6 +2,10 @@
 >
 > **Notice: This repository makes extensive use of vibe coding and may not be suitable for everyone.**
 
+> **MHWS 分支状态：尚未开始 Hyprland 适配。** 当前代码与创建分支时的 MNWS 基线相同，仍面向 Niri；本分支暂不提供 Hyprland 支持。下方功能与安装说明目前适用于 Niri。
+>
+> **MHWS branch status: Hyprland adaptation has not started.** The code is still the MNWS baseline from when this branch was created and targets Niri. This branch does not yet provide Hyprland support. The features and installation instructions below currently apply to Niri.
+
 # MNWS — My Niri Workspace Solution
 
 **A simpler desktop solution for Niri.**
