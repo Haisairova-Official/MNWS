@@ -181,8 +181,10 @@ def check(preinstall=False):
     try:
         from mnws_layout import parse_jsonc
         command = parse_jsonc(modules.read_text()).get('custom/applauncher', {}).get('on-click', '')
-        if command.strip().startswith('rofi ') and not shutil.which('rofi'):
-            errors.append('默认应用菜单缺少 rofi；请安装或配置其他启动器')
+        if not preinstall and command.strip().startswith('rofi ') and not shutil.which('rofi'):
+            errors.append('应用菜单缺少 rofi；请安装或配置其他启动器')
+        if not preinstall and command.strip() == 'fuzzel' and not shutil.which('fuzzel'):
+            errors.append('应用菜单缺少 fuzzel；请安装或配置其他启动器')
     except (OSError, ValueError):
         pass
     for error in dict.fromkeys(errors):

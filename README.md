@@ -6,7 +6,7 @@
 
 **A simpler desktop solution for Niri.**
 
-当前版本 / Current version: **1.21 F** · [更新记录 / Changelog](CHANGELOG.md)
+当前版本 / Current version: **1.22 F** · [更新记录 / Changelog](CHANGELOG.md)
 
 [中文](#中文) · [English](#english)
 
@@ -28,12 +28,14 @@ MNWS 为 Niri 整合桌面图标、底部任务栏、统一设置与插件，让
 - Linux、Niri，以及支持 CFFI v2 的 Waybar。
 - Python 3.11+、PyGObject（GTK 3/Gio）、PyCairo、Pillow、gtk-layer-shell；文件管理集成使用 Thunar。
 - Rust 1.87+ / Cargo、C 编译器、Make、pkg-config，以及 GTK 3、gtk-layer-shell、json-glib 开发文件。
-- 桌面启动器使用 systemd 用户服务；默认应用菜单使用 Rofi，可在 `modules.jsonc` 修改。
+- 桌面启动器使用 systemd 用户服务；应用菜单优先使用 fuzzel，其次 rofi，也可自定义启动命令。
 - 歌词插件需要 Firefox 启用 MPRIS 并正在播放 `music.163.com` 的音乐。
 
 任务栏使用随仓库提供的 `vendor/niri-ipc`，来自 Niri/Shorin 26.04 的本地源码快照，包含最小化等扩展接口。其他 Niri 版本可能需要适配。
 
 ### 构建与安装
+
+下载源码后可直接运行 `./install.sh`，按提示补齐依赖和构建组件。以下手动步骤供需要自行准备环境的用户参考。
 
 **1. 准备依赖并下载源码**
 
@@ -72,7 +74,7 @@ install -m644 src/niri-desktop-layer/integration/libwaybar-space.so "$HOME/.loca
 ```
 
 用 `./mnws config` 打开设置，`./mnws check` 排查安装问题。
-安装会保留已有配置；`install.sh` 不自动安装系统依赖或编译组件。
+安装保留已有配置，并更新应用菜单启动命令（原文件备份为 `.mnws-launcher.bak`）。优先使用 fuzzel，其次 rofi；都没有时按提示选择安装 fuzzel（默认 Y）、输入自定义启动命令（n），或 Ctrl+C 取消。缺少运行依赖或组件时，安装程序会询问是否补齐或构建（默认 Y，n/Ctrl+C 取消），完成后重新检查。自动补齐支持 apt、pacman、dnf；软件源缺包或版本不够时会提示手动处理。
 保留仓库目录，并将 `~/.local/bin` 加入 `PATH`，之后可直接使用 `mnws`。
 
 浮动窗口规则、登录自启及已有 Waybar 配置的接入方式见 [安装详情](docs/installation.md)。
@@ -147,7 +149,7 @@ The taskbar uses the bundled `vendor/niri-ipc`, a local source snapshot from Nir
 ```
 
 Use `./mnws config` for settings and `./mnws check` to diagnose installation problems.
-The installer preserves existing configuration; it does not install system dependencies or compile components.
+The installer preserves existing settings and updates the app launcher command, backing up the original file as `.mnws-launcher.bak`. It prefers fuzzel, then rofi. If neither is available, choose to install fuzzel (default Y), enter a custom command (n), or cancel with Ctrl+C. Missing runtime dependencies and components trigger an offer to install or build them (default Y; n/Ctrl+C cancels), followed by another check. Automatic dependency installation supports apt, pacman and dnf; unavailable packages or outdated versions need manual attention.
 Keep the checkout and add `~/.local/bin` to `PATH` to use `mnws` directly.
 
 See [installation details](docs/installation.md#build-and-install) for floating-window rules, autostart and integration with an existing Waybar configuration.

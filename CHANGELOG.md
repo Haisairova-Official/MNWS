@@ -1,5 +1,39 @@
 # Changelog / 更新记录
 
+## 1.22 F — 2026-09-09
+
+### 中文
+
+- 帮助新增版本、构建日期、更新摘要。（B）
+- 防止隐藏图标后的右键失效；顺便新增终端入口与退出确认。我觉得是个好功能。（C）
+- 统一组件启停、状态查询及六级日志。（D）
+- 移除了Koha D
+- 提升了超级牛力。（E）
+- 优化了安装逻辑，修复了一箩筐的bug（1.21）
+- 简化了install，并直接在程序中添加了uninstall选项。（F）
+- 优化了安装逻辑，启动器我之前忘记配置了。我的错。（1.22）
+
+### English
+
+- Add version, build date and update summaries to help. (B)
+- Fix the context menu when desktop icons are hidden; add a terminal entry and exit confirmation. I think it is a nice feature. (C)
+- Unify component start/stop controls, status queries and six logging levels. (D)
+- Remove Koha D.
+- Increase Super Cow Powers. (E)
+- Improve installation logic and fix a basketful of bugs. (1.21)
+- Simplify install and add an uninstall option directly to the program. (F)
+- Improve installation logic: I forgot to configure the launcher earlier. My mistake. (1.22)
+
+### 安装流程 / Installation flow
+
+- 缺少运行依赖或组件时询问是否补齐或构建，完成后重新检查；自动补齐支持 apt、pacman、dnf，拒绝或取消时停止。
+- Offer to install missing runtime dependencies or build components, then check again. Automatic dependency installation supports apt, pacman and dnf; declining or cancelling stops installation.
+
+### 验证 / Validation
+
+- 48 项测试通过，包括启动器优先级、自定义命令、取消、安装成功与失败、配置备份。包管理器使用模拟测试，未实际安装系统软件。
+- 48 tests passed, covering launcher priority, custom commands, cancellation, installation success/failure and configuration backups. Package manager calls were mocked; no system packages were installed.
+
 ## 1.21 F — 2026-09-09
 
 ### 中文

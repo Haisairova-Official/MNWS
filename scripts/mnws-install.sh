@@ -6,8 +6,24 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 CONFIG_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/waybar"
 LOCAL_BIN="$HOME/.local/bin"
 
-# Fail before changing any existing user files.
-python3 "$ROOT/tools/mnws_health.py" --preinstall
+# Offer dependency repair before changing user configuration.
+if ! command -v python3 >/dev/null 2>&1; then
+    echo "缺少 Python 3，是否现在安装？（Y/n/Ctrl+C）"
+    read -r answer || { echo "已取消。"; exit 1; }
+    case "$answer" in
+        ""|y|Y)
+            if command -v apt-get >/dev/null; then packages=(apt-get install python3)
+            elif command -v pacman >/dev/null; then packages=(pacman -S python)
+            elif command -v dnf >/dev/null; then packages=(dnf install python3)
+            else echo "请使用系统软件管理器安装 Python 3.11+ 后重试。"; exit 1; fi
+            if [ "$EUID" -ne 0 ]; then packages=(sudo "${packages[@]}"); fi
+            "${packages[@]}" || { echo "Python 安装失败，请检查软件源后重试。"; exit 1; }
+            ;;
+        *) echo "已取消。"; exit 1 ;;
+    esac
+fi
+python3 "$ROOT/tools/mnws_setup.py"
+LAUNCHER="$(python3 "$ROOT/tools/mnws_launcher.py" --select)"
 mkdir -p "$LOCAL_BIN" "$CONFIG_DIR"
 for file in config-bottom.jsonc style-bottom.css modules.jsonc colors.css; do
     target="$CONFIG_DIR/$file"
@@ -20,6 +36,7 @@ for file in config-bottom.jsonc style-bottom.css modules.jsonc colors.css; do
     fi
 done
 
+python3 "$ROOT/tools/mnws_launcher.py" --apply "$CONFIG_DIR/modules.jsonc" "$LAUNCHER"
 python3 "$ROOT/tools/mnws_health.py" --init-desktop
 
 for script in taskbar-toggle.sh taskbar-state.sh; do

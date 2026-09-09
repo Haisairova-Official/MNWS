@@ -2,7 +2,7 @@
 
 ### 构建与安装
 
-这是源码集成项目，安装脚本不会自动安装系统依赖。先备份现有 Waybar 配置，再安装上述依赖。
+这是源码集成项目，安装脚本可在确认后补齐依赖并构建缺失组件；自动补齐支持 apt、pacman、dnf。先备份现有 Waybar 配置，再安装上述依赖。
 以下命令均在仓库根目录执行。更新已有安装时，先停止底部 Waybar，再替换它加载的动态库。
 
 ```sh
@@ -27,7 +27,7 @@ install -m644 src/niri-desktop-layer/integration/libwaybar-space.so "$HOME/.loca
 
 仓库根目录的 `./install.sh` 与 `./mnws install` 使用相同安装流程。
 
-`mnws install` 会先检查运行依赖与必需的动态库；缺失时返回失败并列出问题。
+`mnws install` 会先检查运行依赖与动态库；缺失时询问是否补齐，拒绝或失败时停止。
 预检通过后，将启动器链接到 `~/.local/bin`，向 `$XDG_CONFIG_HOME/waybar`（默认 `~/.config/waybar`）复制缺失的默认配置。
 已有配置文件和有效符号链接均保留，不导入或覆盖源码中的默认配置；遇到失效链接会停止并提示修复。
 安装会创建缺失的桌面目录，优先使用桌面配置或 XDG 桌面目录，否则使用 `~/Desktop`。
@@ -51,13 +51,13 @@ mnws desktop --start  # 或 mnws desktop -s
 
 ### Build and install
 
-This is a source integration project. The installer does not install system dependencies.
+This is a source integration project. The installer offers to install missing dependencies and build missing components after confirmation, with apt, pacman and dnf support.
 Back up your Waybar configuration, install the dependencies above, then run the build and installation commands in the [Chinese section](#构建与安装) from the repository root.
 For an existing installation, stop the bottom Waybar before replacing its loaded shared libraries.
 
 Run `./install.sh` from the repository root, or use the equivalent `./mnws install`.
 
-`mnws install` first checks runtime dependencies and required shared libraries, failing with an error list if anything is missing.
+`mnws install` checks dependencies and libraries, offers to repair missing items, and stops if declined or unsuccessful.
 It links launchers into `~/.local/bin` and copies missing defaults into `$XDG_CONFIG_HOME/waybar` (default: `~/.config/waybar`).
 Existing files and valid symlinks are preserved; broken configuration symlinks cause installation to stop.
 The installer initializes the configured/XDG desktop directory, falling back to `~/Desktop`.

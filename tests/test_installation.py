@@ -36,12 +36,12 @@ class InstallationTests(unittest.TestCase):
             file.chmod(0o755)
         self.libs = self.home / '.local/lib/waybar'
         self.libs.mkdir(parents=True)
-        for name in ('libniri_taskbar.so', 'libwaybar-space.so'):
+        for name in ('libniri_taskbar.so', 'libwaybar-space.so', 'libmnws_panel.so'):
             (self.libs / name).touch()
 
     def install(self):
         return subprocess.run(['bash', str(ROOT / 'scripts/mnws-install.sh')],
-                              env=self.env, capture_output=True, text=True)
+                              env=self.env, input="n\n", capture_output=True, text=True)
 
     def config_files(self):
         folder = self.config / 'waybar'
@@ -77,7 +77,7 @@ class InstallationTests(unittest.TestCase):
         (self.libs / 'libniri_taskbar.so').unlink()
         result = self.install()
         self.assertNotEqual(result.returncode, 0)
-        self.assertIn('libniri_taskbar.so', result.stderr)
+        self.assertIn('libniri_taskbar.so', result.stdout)
         self.assertFalse((self.config / 'waybar').exists())
         self.assertFalse((self.home / '.local/bin/mnws').exists())
 
