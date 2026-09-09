@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # 切换底部任务栏显示/隐藏，并刷新 waybar 开关图标
-marker="$HOME/.local/state/taskbar-hidden"
+marker="${XDG_STATE_HOME:-$HOME/.local/state}/taskbar-hidden"
 mkdir -p "$(dirname "$marker")"
 
 if [ -f "$marker" ]; then

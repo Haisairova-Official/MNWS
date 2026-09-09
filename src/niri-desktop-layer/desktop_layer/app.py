@@ -72,7 +72,7 @@ def open_mnws_config(tab: str) -> bool:
 def palette_file_candidates() -> list[Path]:
     """配色来源：优先读当前 Waybar 使用的 matugen colors.css。"""
     return [
-        Path.home() / ".config/waybar/colors.css",
+        Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "waybar/colors.css",
         Path(__file__).resolve().parents[2] / "config/waybar/colors.css",
     ]
 
@@ -250,6 +250,8 @@ def main(argv=None):
 
 
 def run_gui(args, cfg, directory):
+    # GUI startup initializes the selected directory; --check stays read-only.
+    directory.mkdir(parents=True, exist_ok=True)
     import cairo
     from gi.repository import Gtk, Gdk, Gio, GLib, Pango, PangoCairo, GtkLayerShell
     from PIL import Image, ImageFilter

@@ -6,7 +6,7 @@
 
 **A simpler desktop solution for Niri.**
 
-当前里程碑 / Current milestone: **1.2** · [更新记录 / Changelog](CHANGELOG.md)
+当前版本 / Current version: **1.21 F** · [更新记录 / Changelog](CHANGELOG.md)
 
 [中文](#中文) · [English](#english)
 
@@ -35,43 +35,56 @@ MNWS 为 Niri 整合桌面图标、底部任务栏、统一设置与插件，让
 
 ### 构建与安装
 
-这是源码集成项目，安装脚本不会自动安装系统依赖。先备份现有 Waybar 配置，再安装上述依赖。
-以下命令均在仓库根目录执行。更新已有安装时，先停止底部 Waybar，再替换它加载的动态库。
+**1. 准备依赖并下载源码**
+
+安装上面的依赖，然后执行：
 
 ```sh
 git clone https://github.com/Haisairova-Official/MNWS.git
 cd MNWS
+```
 
-cargo build --release --manifest-path src/niri-taskbar/Cargo.toml
+**2. 构建组件**（首次安装必须执行）
+
+<details>
+<summary>展开编译命令 / Build commands</summary>
+
+升级已有安装时，先用 `mnws taskbar -S` 停止底部任务栏。
+
+```sh
+./mnws build-taskbar
 make -C src/panel-rows
 cc -shared -fPIC -O2 src/niri-desktop-layer/integration/waybar-space.c \
   -o src/niri-desktop-layer/integration/libwaybar-space.so \
   $(pkg-config --cflags --libs gtk+-3.0 gtk-layer-shell-0)
-
-mkdir -p "$HOME/.local/lib/waybar"
-install -m644 src/niri-taskbar/target/release/libniri_taskbar.so "$HOME/.local/lib/waybar/"
 install -m644 src/panel-rows/libmnws_panel.so "$HOME/.local/lib/waybar/"
 install -m644 src/niri-desktop-layer/integration/libwaybar-space.so "$HOME/.local/lib/waybar/"
-
-./mnws install
-./mnws layout apply --restart
-./mnws config
 ```
 
-`mnws install` 将启动器链接到 `~/.local/bin`，将底栏配置和样式链接到本仓库。
-已有的普通底栏配置文件会先复制进仓库；共享的 `modules.jsonc` 和 `colors.css` 仅在缺失时安装。
-如果使用已有共享配置，请确保它定义了 `custom/applauncher`、`niri/workspaces` 和 `clock`。
-安装后应保留仓库目录，并把 `~/.local/bin` 加入 `PATH`。
+</details>
 
-将 [config/mnws-windows.kdl](config/mnws-windows.kdl) 中的窗口规则加入 Niri 配置，使设置窗口浮动。
-用 `niri validate` 检查配置。启动桌面图标层：
+**3. 安装并启动**
 
 ```sh
-mnws desktop --start  # 或 mnws desktop -s
-./mnws autostart on
+./install.sh
+./mnws layout apply --restart
+./mnws desktop -s
 ```
 
-第二条命令开启桌面图标层登录自启；任务栏自启需加入你自己的会话启动配置。
+用 `./mnws config` 打开设置，`./mnws check` 排查安装问题。
+安装会保留已有配置；`install.sh` 不自动安装系统依赖或编译组件。
+保留仓库目录，并将 `~/.local/bin` 加入 `PATH`，之后可直接使用 `mnws`。
+
+浮动窗口规则、登录自启及已有 Waybar 配置的接入方式见 [安装详情](docs/installation.md)。
+
+### 卸载
+
+```sh
+mnws --uninstall
+```
+
+默认取消卸载；确认后可选择保留配置（默认保留）。会停止组件并移除 MNWS 启动入口、可确认归属的动态库及自动生成的桌面自启项。
+选择清理配置时，仅清理 MNWS 自有配置；共享 Waybar 配置、桌面文件、插件包和源码保留。手动添加的任务栏自启命令需自行移除。
 
 ### 使用与插件
 
@@ -123,18 +136,27 @@ The taskbar uses the bundled `vendor/niri-ipc`, a local source snapshot from Nir
 
 ### Build and install
 
-This is a source integration project. The installer does not install system dependencies.
-Back up your Waybar configuration, install the dependencies above, then run the build and installation commands in the [Chinese section](#构建与安装) from the repository root.
-For an existing installation, stop the bottom Waybar before replacing its loaded shared libraries.
+1. Install the [requirements](#requirements), then clone the repository using the commands in the [installation section](#构建与安装).
+2. Build the components using its expandable **Build commands** block. This step is required for a fresh installation. Stop an existing bottom taskbar with `mnws taskbar -S` before updating libraries.
+3. Install and start:
 
-`mnws install` links launchers into `~/.local/bin` and links the bottom bar's configuration and stylesheet to this checkout.
-Existing regular bottom-bar configuration files are copied into the checkout first. Shared `modules.jsonc` and `colors.css` files are installed only when missing.
-If keeping existing shared configuration, make sure it defines `custom/applauncher`, `niri/workspaces` and `clock`.
-Keep the checkout after installation and add `~/.local/bin` to your `PATH`.
+```sh
+./install.sh
+./mnws layout apply --restart
+./mnws desktop -s
+```
 
-Add the rules in [config/mnws-windows.kdl](config/mnws-windows.kdl) to your Niri configuration to make settings windows float, then check with `niri validate`.
-Start the desktop icon layer with `mnws desktop --start` (or `mnws desktop -s`).
-Use `./mnws autostart on` to enable desktop-icon autostart; add taskbar startup to your own session configuration separately.
+Use `./mnws config` for settings and `./mnws check` to diagnose installation problems.
+The installer preserves existing configuration; it does not install system dependencies or compile components.
+Keep the checkout and add `~/.local/bin` to `PATH` to use `mnws` directly.
+
+See [installation details](docs/installation.md#build-and-install) for floating-window rules, autostart and integration with an existing Waybar configuration.
+
+### Uninstall
+
+Run `mnws --uninstall`. Uninstallation defaults to **No**; keeping configuration defaults to **Yes**.
+It stops the components and removes MNWS launchers, identifiable libraries and its generated desktop autostart entry.
+Choosing to discard configuration removes only MNWS-owned configuration. Shared Waybar files, desktop documents, plugin packages and source files remain. Remove manually configured taskbar autostart commands separately.
 
 ### Usage and plugins
 
@@ -209,3 +231,6 @@ A submitted launch request does not prove that the external application opened s
 日志中的“启动请求已提交”表示请求已发出，不代表外部应用已成功打开。
 
 `mnws --status` shows both desktop and taskbar status. / 同时显示桌面和任务栏状态。
+
+Configuration, visibility markers, plugin data and caches follow `XDG_CONFIG_HOME`, `XDG_STATE_HOME`, `XDG_DATA_HOME` and `XDG_CACHE_HOME`, respectively. Existing `MNWS_PLUGIN_DIR` / `MNWS_CACHE_DIR` overrides take precedence.
+配置、显隐标记、插件数据和缓存分别遵循上述 XDG 路径；已有 `MNWS_PLUGIN_DIR` / `MNWS_CACHE_DIR` 覆盖设置优先。

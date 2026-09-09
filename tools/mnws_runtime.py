@@ -44,6 +44,31 @@ def pids(component):
 
 
 
+
+def start_taskbar(config, style):
+    """Verify files and detect early exit; preserve startup errors in a log."""
+    from mnws_health import validate_waybar, state_home
+    errors = validate_waybar(config, style)
+    if errors:
+        return False, '\n'.join(errors)
+    log = state_home() / 'mnws/taskbar.log'
+    env = dict(os.environ)
+    env.pop('GDK_BACKEND', None)
+    try:
+        log.parent.mkdir(parents=True, exist_ok=True)
+        with log.open('ab') as output:
+            output.write(b'\n--- MNWS taskbar start ---\n')
+            output.flush()
+            child = subprocess.Popen(['waybar', '-c', str(config), '-s', str(style)], env=env,
+                                     start_new_session=True, stdout=output, stderr=output)
+        time.sleep(.5)
+        code = child.poll()
+        if code is not None:
+            return False, f'任务栏启动失败（退出码 {code}），日志：{log}'
+    except OSError as error:
+        return False, f'任务栏启动失败：{error}；日志：{log}'
+    return True, ''
+
 def build_info():
     try:
         info = json.loads((ROOT / 'build-info.json').read_text(encoding='utf-8'))
@@ -70,6 +95,7 @@ def help_text(component=None):
         commands = """全局选项：
   -v                   仅显示版本
   --status             同时查看桌面和任务栏状态
+  --uninstall          卸载 MNWS（默认取消，可选择保留配置）
 
 命令：
   desktop              管理桌面图标和桌面右键菜单
@@ -217,7 +243,7 @@ def main(argv=None, quiet=False):
                 for flag, value in options.items():
                     command.extend([flag, value])
             else:
-                folder = Path.home() / '.config/waybar'
+                folder = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'waybar'
                 config, style = folder / 'config-bottom.jsonc', folder / 'style-bottom.css'
                 if not config.is_file() or not style.is_file():
                     parser.exit(1, '缺少任务栏配置，请先运行 mnws install。\n')
@@ -242,20 +268,13 @@ def main(argv=None, quiet=False):
             env = dict(os.environ)
             env.pop('GDK_BACKEND', None)
             return subprocess.call([str(ROOT / 'src/niri-desktop-layer/start-desktop-layer')], env=env, stdout=subprocess.DEVNULL)
-        folder = Path.home() / '.config/waybar'
+        folder = Path(os.environ.get('XDG_CONFIG_HOME') or Path.home() / '.config') / 'waybar'
         config, style = folder / 'config-bottom.jsonc', folder / 'style-bottom.css'
         if not config.is_file() or not style.is_file():
             parser.exit(1, '缺少任务栏配置，请先运行 mnws install。\n')
-        env = dict(os.environ)
-        env.pop('GDK_BACKEND', None)
-        try:
-            child = subprocess.Popen(['waybar', '-c', str(config), '-s', str(style)], env=env,
-                                     start_new_session=True, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
-        except OSError as error:
-            parser.exit(1, f'启动失败：{error}\n')
-        time.sleep(.3)
-        if child.poll() is not None:
-            parser.exit(1, '任务栏启动后退出，请检查 Waybar 配置和模块。\n')
+        ok, message = start_taskbar(config, style)
+        if not ok:
+            parser.exit(1, message + '\n')
         return 0
     for pid in targets:
         try:

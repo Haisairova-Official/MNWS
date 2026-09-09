@@ -633,6 +633,16 @@ class DesktopGuiTests(unittest.TestCase):
 
 
 
+    def test_startup_initializes_missing_desktop(self):
+        import shutil
+        shutil.rmtree(self.desktop)
+        def scenario(application):
+            yield lambda: bool(application.views and application.views[0].get_mapped())
+            self.assertTrue(self.desktop.is_dir())
+            self.assertEqual(application.entries, [])
+            application.views[0].close()
+        self.run_preview(self.Config(), scenario)
+
     def test_terminal_and_confirmed_exit_menu(self):
         def scenario(application):
             yield lambda: self.ready(application)

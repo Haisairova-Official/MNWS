@@ -1,5 +1,5 @@
 """Validated configuration; reading it never modifies desktop configuration."""
-from dataclasses import dataclass, fields
+from dataclasses import dataclass, fields, field
 from pathlib import Path
 import os
 import tomllib
@@ -22,15 +22,15 @@ class Config:
     sort_by: str = "name"
     sort_descending: bool = False
     folders_first: bool = True
-    visibility_marker: str = "~/.local/state/desktop-hidden"
+    visibility_marker: str = field(default_factory=lambda: str(Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "desktop-hidden"))
 
 
 def config_path():
-    return Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "niri-desktop-layer/config.toml"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "niri-desktop-layer/config.toml"
 
 
 def state_path():
-    return Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "niri-desktop-layer/layout.json"
+    return Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "niri-desktop-layer/layout.json"
 
 
 def load_config(path=None):

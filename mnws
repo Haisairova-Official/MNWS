@@ -27,6 +27,13 @@ if [[ "${2:-}" == "-h" || "${2:-}" == "--help" || "${2:-}" == "-?" ]]; then
 fi
 
 case "${1:-help}" in
+    --uninstall)
+        if [ "$#" -ne 1 ]; then
+            echo "用法: mnws --uninstall" >&2
+            exit 2
+        fi
+        exec python3 "$ROOT/tools/mnws_uninstall.py"
+        ;;
     --status)
         exec python3 "$ROOT/tools/mnws_runtime.py" "$@"
         ;;
@@ -38,30 +45,22 @@ case "${1:-help}" in
         exec python3 "$ROOT/tools/mnws-config.py" "$@"
         ;;
     check)
-        exec python3 "$ROOT/tools/mnws-config.py" --check
+        exec python3 "$ROOT/tools/mnws_health.py"
         ;;
     build-taskbar)
         cd "$ROOT/src/niri-taskbar"
-        cargo build --release --offline
-        install -Dm644 target/release/libniri_taskbar.so "$HOME/.local/lib/waybar/libniri_taskbar.so"
+        cargo build --release --locked
+        mkdir -p "$HOME/.local/lib/waybar"
+        taskbar_library_tmp="$(mktemp "$HOME/.local/lib/waybar/.libniri_taskbar.XXXXXX")"
+        trap 'rm -f "$taskbar_library_tmp"' EXIT
+        install -m644 target/release/libniri_taskbar.so "$taskbar_library_tmp"
+        mv -f "$taskbar_library_tmp" "$HOME/.local/lib/waybar/libniri_taskbar.so"
         echo "已复制 libniri_taskbar.so 到 ~/.local/lib/waybar/"
         ;;
     restart)
         case "${2:-}" in
-            taskbar)
-                pkill -f '[c]onfig-bottom.jsonc' || true
-                sleep 0.4
-                env -u GDK_BACKEND setsid -f waybar \
-                    -c "$HOME/.config/waybar/config-bottom.jsonc" \
-                    -s "$HOME/.config/waybar/style-bottom.css"
-                ;;
-            desktop)
-                exec python3 "$ROOT/tools/mnws-config.py" --restart-desktop
-                ;;
-            *)
-                echo "用法: mnws restart taskbar|desktop" >&2
-                exit 2
-                ;;
+            desktop|taskbar) exec python3 "$ROOT/tools/mnws_runtime.py" "$2" --restart ;;
+            *) echo "用法: mnws restart desktop|taskbar" >&2; exit 2 ;;
         esac
         ;;
     install)

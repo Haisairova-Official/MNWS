@@ -102,7 +102,7 @@ def plugin_dir() -> Path:
     override = os.environ.get("MNWS_PLUGIN_DIR")
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".local/share/mnws/plugins"
+    return Path(os.environ.get("XDG_DATA_HOME") or Path.home() / ".local/share") / "mnws/plugins"
 
 
 def cache_dir() -> Path:
@@ -110,7 +110,7 @@ def cache_dir() -> Path:
     override = os.environ.get("MNWS_CACHE_DIR")
     if override:
         return Path(override).expanduser()
-    return Path.home() / ".cache/mnws/plugins"
+    return Path(os.environ.get("XDG_CACHE_HOME") or Path.home() / ".cache") / "mnws/plugins"
 
 
 def scan_packages(folder: Path | None = None) -> list[Path]:

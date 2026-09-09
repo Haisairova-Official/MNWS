@@ -22,8 +22,8 @@ from gi.repository import GLib, Gdk, Gtk
 PROJECT_ROOT = Path(__file__).resolve().parent.parent
 MARKER = "/* ==== MNWS 任务栏样式（自动生成）==== */"
 
-DESKTOP_MARKER = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "desktop-hidden"
-TASKBAR_MARKER = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state"))) / "taskbar-hidden"
+DESKTOP_MARKER = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "desktop-hidden"
+TASKBAR_MARKER = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state") / "taskbar-hidden"
 
 AUTOSTART_BEGIN = "// ==== MNWS 桌面图标层自启（自动生成）===="
 AUTOSTART_END = "// ==== MNWS 桌面图标层自启 END ===="
@@ -57,11 +57,11 @@ def home() -> Path:
 
 
 def live_style_path() -> Path:
-    return home() / ".config/waybar/style-bottom.css"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config") / "waybar/style-bottom.css"
 
 
 def live_config_path() -> Path:
-    return home() / ".config/waybar/config-bottom.jsonc"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config") / "waybar/config-bottom.jsonc"
 
 
 def project_state_path() -> Path:
@@ -109,7 +109,7 @@ def desktop_state_path() -> Path:
                     return Path(args[index + 1])
         except OSError:
             continue
-    xdg = Path(os.environ.get("XDG_STATE_HOME", str(home() / ".local/state"))) / "niri-desktop-layer/layout.json"
+    xdg = Path(os.environ.get("XDG_STATE_HOME") or home() / ".local/state") / "niri-desktop-layer/layout.json"
     if xdg.exists():
         return xdg
     return project_state_path()
@@ -239,26 +239,13 @@ def stop_taskbar() -> bool:
 
 
 def start_taskbar() -> tuple[bool, str]:
-    config = live_config_path()
-    style = live_style_path()
-    if not config.exists() or not style.exists():
-        return False, "缺少任务栏配置/样式文件"
-    env = {key: value for key, value in os.environ.items() if key != "GDK_BACKEND"}
-    try:
-        subprocess.Popen(
-            ["waybar", "-c", str(config), "-s", str(style)],
-            env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            start_new_session=True,
-        )
-        return True, "已重新拉起底部任务栏"
-    except OSError as exc:
-        return False, "启动失败：%s" % exc
+    from mnws_runtime import start_taskbar as start
+    return start(live_config_path(), live_style_path())
 
 
 def restart_taskbar() -> tuple[bool, str]:
-    stop_taskbar()
-    time.sleep(0.3)
-    return start_taskbar()
+    from mnws_layout import restart_taskbar as restart
+    return restart(live_config_path(), live_style_path())
 
 
 def set_marker(marker: Path, hidden: bool) -> None:
@@ -293,7 +280,7 @@ def run_taskbar_toggle() -> tuple[bool, str]:
 
 
 def niri_config_path() -> Path:
-    return home() / ".config/niri/config.kdl"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config") / "niri/config.kdl"
 
 
 def autostart_script() -> Path:
@@ -1030,14 +1017,8 @@ class TaskbarStyleWindow(Gtk.Window):
 def main(argv=None):
     args = arguments(argv)
     if args.check:
-        print("MNWS 项目目录:", PROJECT_ROOT)
-        print("底部任务栏配置:", live_config_path())
-        print("底部任务栏样式:", live_style_path())
-        print("桌面布局状态:", desktop_state_path())
-        print("桌面入口:", desktop_daemon_script())
-        print("桌面图标层:", "运行中" if desktop_pids() else "未运行")
-        print("底部任务栏:", "运行中" if taskbar_pids() else "未运行")
-        return 0
+        from mnws_health import check
+        return check()
     if args.restart_desktop:
         ok, text = restart_desktop()
         print(text)

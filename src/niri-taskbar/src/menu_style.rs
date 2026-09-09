@@ -25,8 +25,11 @@ static FONT_RE: LazyLock<Regex> =
     LazyLock::new(|| Regex::new(r"font-family\s*:\s*([^;}]+);").expect("valid font regex"));
 
 fn waybar_config_file(name: &str) -> Option<PathBuf> {
-    let home = std::env::var("HOME").ok()?;
-    let path = PathBuf::from(home).join(".config/waybar").join(name);
+    let config = std::env::var_os("XDG_CONFIG_HOME")
+        .filter(|value| !value.is_empty())
+        .map(PathBuf::from)
+        .or_else(|| std::env::var_os("HOME").map(|home| PathBuf::from(home).join(".config")))?;
+    let path = config.join("waybar").join(name);
     path.is_file().then_some(path)
 }
 

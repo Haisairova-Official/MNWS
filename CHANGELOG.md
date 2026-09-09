@@ -1,5 +1,36 @@
 # Changelog / 更新记录
 
+## 1.21 F — 2026-09-09
+
+### 中文
+
+- 帮助新增版本、构建日期、更新摘要。（B）
+- 防止隐藏图标后的右键失效；顺便新增终端入口与退出确认。我觉得是个好功能。（C）
+- 统一组件启停、状态查询及六级日志。（D）
+- 移除了Koha D
+- 提升了超级牛力。（E）
+- 优化了安装逻辑，修复了一箩筐的bug（1.21）
+- 简化了install，并直接在程序中添加了uninstall选项。（F）
+
+### English
+
+- Add version, build date and update summaries to help. (B)
+- Fix the context menu when desktop icons are hidden; add a terminal entry and exit confirmation. I think it is a nice feature. (C)
+- Unify component start/stop controls, status queries and six logging levels. (D)
+- Remove Koha D.
+- Increase Super Cow Powers. (E)
+- Improve installation logic and fix a basketful of bugs. (1.21)
+- Simplify install and add an uninstall option directly to the program. (F)
+
+### 验证 / Validation
+
+- 35 项安装、命令、歌词、彩蛋与卸载测试通过；卸载在临时目录中验证。
+- 72 项桌面回归测试通过；Rust 任务栏编译通过。
+- 未完成全新发行版虚拟机验证；安装仍需要手动准备依赖和构建组件，命令入口仍依赖源码目录。
+- 35 installation, CLI, lyrics, easter-egg and uninstall tests passed, with uninstall tests isolated in temporary directories.
+- 72 desktop regression tests and the Rust taskbar build passed.
+- No fresh-distribution VM validation yet. Dependencies and component builds remain manual; launchers still require the source checkout.
+
 ## 1.2 — 2026-09-09
 
 ### 中文

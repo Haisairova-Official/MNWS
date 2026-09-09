@@ -24,10 +24,10 @@ PROJECT_ROOT = TOOLS_DIR.parent
 
 import mnws_plugin as mplg  # noqa: E402  (同目录，供 CLI 复用扫描/解包)
 
-USER_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME", str(Path.home() / ".config"))) / "mnws"
+USER_CONFIG_DIR = Path(os.environ.get("XDG_CONFIG_HOME") or Path.home() / ".config") / "mnws"
 USER_LAYOUT_PATH = USER_CONFIG_DIR / "taskbar-layout.json"
 PROJECT_LAYOUT_PATH = PROJECT_ROOT / "config/taskbar-layout.json"
-STATE_HOME = Path(os.environ.get("XDG_STATE_HOME", str(Path.home() / ".local/state")))
+STATE_HOME = Path(os.environ.get("XDG_STATE_HOME") or Path.home() / ".local/state")
 
 TASKBAR_MARKER = "/* ==== MNWS 任务栏样式（自动生成）==== */"
 CSS_START = "/* ==== MNWS 插件布局（自动生成）==== */"
@@ -52,11 +52,11 @@ def home() -> Path:
 
 
 def live_config_path() -> Path:
-    return home() / ".config/waybar/config-bottom.jsonc"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config") / "waybar/config-bottom.jsonc"
 
 
 def live_style_path() -> Path:
-    return home() / ".config/waybar/style-bottom.css"
+    return Path(os.environ.get("XDG_CONFIG_HOME") or home() / ".config") / "waybar/style-bottom.css"
 
 
 def plugin_dir() -> Path:
@@ -535,6 +535,11 @@ def apply_layout(layout: dict | None = None, restart: bool = False,
     except (OSError, ValueError) as exc:
         return False, "渲染失败：%s" % exc
 
+    from mnws_health import validate_waybar
+    errors = validate_waybar(config_path, style_path, cfg)
+    if errors:
+        return False, "应用前检查失败：\n" + "\n".join(errors)
+
     config_path.parent.mkdir(parents=True, exist_ok=True)
     style_path.parent.mkdir(parents=True, exist_ok=True)
     try:
@@ -556,43 +561,31 @@ def apply_layout(layout: dict | None = None, restart: bool = False,
 
 
 def taskbar_pids() -> list[int]:
-    pids = []
-    try:
-        for entry in Path("/proc").iterdir():
-            if not entry.name.isdigit():
-                continue
-            try:
-                raw = (entry / "cmdline").read_bytes().split(b"\0")
-            except (OSError, PermissionError):
-                continue
-            cmd = " ".join(part.decode(errors="replace") for part in raw)
-            if "config-bottom.jsonc" in cmd and "waybar" in cmd:
-                if int(entry.name) != os.getpid():
-                    pids.append(int(entry.name))
-    except OSError:
-        pass
-    return sorted(pids)
+    from mnws_runtime import pids
+    return pids('taskbar')
 
 
 def restart_taskbar(config_path: Path | None = None, style_path: Path | None = None) -> tuple[bool, str]:
+    from mnws_health import validate_waybar
+    from mnws_runtime import start_taskbar
     config_path = config_path or live_config_path()
     style_path = style_path or live_style_path()
-    for pid in taskbar_pids():
+    errors = validate_waybar(config_path, style_path)
+    if errors:
+        return False, "\n".join(errors)
+    targets = taskbar_pids()
+    for pid in targets:
         try:
             os.kill(pid, 15)
         except ProcessLookupError:
             pass
     deadline = time.monotonic() + 2.0
-    while time.monotonic() < deadline and taskbar_pids():
+    while set(targets) & set(taskbar_pids()):
+        if time.monotonic() >= deadline:
+            return False, '旧任务栏尚未退出；未启动第二个实例。'
         time.sleep(0.08)
-    env = {key: value for key, value in os.environ.items() if key != "GDK_BACKEND"}
-    try:
-        subprocess.Popen(["waybar", "-c", str(config_path), "-s", str(style_path)],
-                         env=env, stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                         start_new_session=True)
-        return True, "底部任务栏已重启"
-    except OSError as exc:
-        return False, str(exc)
+    ok, message = start_taskbar(config_path, style_path)
+    return ok, message if not ok else '底部任务栏已重启'
 
 
 def cli_render(args) -> int:

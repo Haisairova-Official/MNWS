@@ -26,7 +26,8 @@ def main():
         args = [executable, "--state", str(root / "state/layout.json"), *sys.argv[1:]]
         environment = [f"{key}={os.environ[key]}" for key in (
             "WAYLAND_DISPLAY", "NIRI_SOCKET", "XDG_CURRENT_DESKTOP", "XDG_RUNTIME_DIR",
-            "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "XAUTHORITY", "LANG", "LANGUAGE", "PATH") if key in os.environ]
+            "DBUS_SESSION_BUS_ADDRESS", "DISPLAY", "XAUTHORITY", "LANG", "LANGUAGE", "PATH",
+            "XDG_CONFIG_HOME", "XDG_DATA_HOME", "XDG_STATE_HOME", "XDG_CACHE_HOME") if key in os.environ]
         properties = [
             ("Description", GLib.Variant("s", "Niri desktop icons")),
             ("Type", GLib.Variant("s", "exec")),
