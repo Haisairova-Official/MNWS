@@ -6,7 +6,7 @@
 
 **A simpler desktop solution for Niri.**
 
-当前版本 / Current version: **1.22 F** · [更新记录 / Changelog](CHANGELOG.md)
+当前版本 / Current version: **1.22 G** · [更新记录 / Changelog](CHANGELOG.md)
 
 [中文](#中文) · [English](#english)
 
@@ -75,7 +75,7 @@ install -m644 src/niri-desktop-layer/integration/libwaybar-space.so "$HOME/.loca
 
 用 `./mnws config` 打开设置，`./mnws check` 排查安装问题。
 安装保留已有配置，并更新应用菜单启动命令（原文件备份为 `.mnws-launcher.bak`）。优先使用 fuzzel，其次 rofi；都没有时按提示选择安装 fuzzel（默认 Y）、输入自定义启动命令（n），或 Ctrl+C 取消。缺少运行依赖或组件时，安装程序会询问是否补齐或构建（默认 Y，n/Ctrl+C 取消），完成后重新检查。自动补齐支持 apt、pacman、dnf；软件源缺包或版本不够时会提示手动处理。
-保留仓库目录，并将 `~/.local/bin` 加入 `PATH`，之后可直接使用 `mnws`。
+保留仓库目录。安装程序优先在已有 PATH 的 `~/.local/bin` 建立命令链接，否则询问是否安装到 `/usr/local/bin`（可能需要 sudo）。不会修改终端配置或覆盖其他程序；卸载只移除属于 MNWS 的链接。
 
 浮动窗口规则、登录自启及已有 Waybar 配置的接入方式见 [安装详情](docs/installation.md)。
 
@@ -150,7 +150,7 @@ The taskbar uses the bundled `vendor/niri-ipc`, a local source snapshot from Nir
 
 Use `./mnws config` for settings and `./mnws check` to diagnose installation problems.
 The installer preserves existing settings and updates the app launcher command, backing up the original file as `.mnws-launcher.bak`. It prefers fuzzel, then rofi. If neither is available, choose to install fuzzel (default Y), enter a custom command (n), or cancel with Ctrl+C. Missing runtime dependencies and components trigger an offer to install or build them (default Y; n/Ctrl+C cancels), followed by another check. Automatic dependency installation supports apt, pacman and dnf; unavailable packages or outdated versions need manual attention.
-Keep the checkout and add `~/.local/bin` to `PATH` to use `mnws` directly.
+Keep the checkout. The installer uses `~/.local/bin` if already on PATH, otherwise offering `/usr/local/bin` (sudo may be required). Shell configuration and unrelated commands are preserved; uninstall removes only MNWS-owned links.
 
 See [installation details](docs/installation.md#build-and-install) for floating-window rules, autostart and integration with an existing Waybar configuration.
 

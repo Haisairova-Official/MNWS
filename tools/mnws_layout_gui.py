@@ -52,6 +52,21 @@ class LayoutWindow:
         sub.set_line_wrap(True)
         outer.pack_start(sub, False, False, 0)
 
+        icon_row = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
+        icon_row.pack_start(Gtk.Label(label="开始按钮图标 / 文字："), False, False, 0)
+        self.start_mode = Gtk.ComboBoxText()
+        self.start_mode.append("custom", "自定义图标 / 文字")
+        self.start_mode.append("distro", "系统发行版 Logo")
+        icon_row.pack_start(self.start_mode, False, False, 0)
+        self.start_label = Gtk.Entry()
+        self.start_label.set_placeholder_text("例如：开始、Apps、☰、🚀；留空恢复默认")
+        icon_row.pack_start(self.start_label, True, True, 0)
+        outer.pack_start(icon_row, False, False, 0)
+        self.start_preview = Gtk.Label(xalign=0)
+        outer.pack_start(self.start_preview, False, False, 0)
+        self.start_mode.connect("changed", lambda *_: self.update_start_preview())
+        self.start_label.connect("changed", lambda *_: self.update_start_preview())
+
         toolbar = Gtk.Box(orientation=Gtk.Orientation.HORIZONTAL, spacing=8)
         add_btn = Gtk.Button(label="添加 .mplg…")
         add_btn.connect("clicked", self.on_add_plugin)
@@ -173,6 +188,16 @@ class LayoutWindow:
     def reload(self):
         self._clear_rows()
         layout = load_layout(self.layout_file)
+        options = layout.get("options", {})
+        try:
+            current = mnws_layout.launcher_definition().get("format", "Apps")
+        except (OSError, ValueError):
+            current = "Apps"
+        import html
+        current = html.unescape(str(current)).replace("{{", "{").replace("}}", "}")
+        self.start_label.set_text(options.get("start_label") or current)
+        self.start_mode.set_active_id(options.get("start_icon_mode", "custom"))
+        self.update_start_preview()
         available = {item["manifest"]["id"]: item
                      for item in scan_available_plugins() if item.get("ok")}
 
@@ -365,6 +390,15 @@ class LayoutWindow:
 
     # ---------- 保存 ----------
 
+    def update_start_preview(self):
+        distro = self.start_mode.get_active_id() == "distro"
+        self.start_label.set_sensitive(not distro)
+        if distro:
+            name, glyph = mnws_layout.distro_logo()
+            self.start_preview.set_text(f"预览：{glyph}  · {name}（需 Nerd Fonts / Font Logos 字体支持）")
+        else:
+            self.start_preview.set_text("预览：" + (self.start_label.get_text() or "Apps"))
+
     def collect_layout(self) -> dict:
         layout = load_layout(self.layout_file)
         builtins, plugins = [], []
@@ -399,6 +433,8 @@ class LayoutWindow:
             item["order"] = row["order"]
         layout["builtins"] = builtins
         layout["plugins"] = plugins
+        layout.setdefault("options", {})["start_label"] = self.start_label.get_text().strip()
+        layout["options"]["start_icon_mode"] = self.start_mode.get_active_id() or "custom"
         layout["apiVersion"] = 1
         return layout
 

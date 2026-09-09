@@ -29,7 +29,7 @@ class InstallationTests(unittest.TestCase):
         self.bin.mkdir()
         self.env = dict(os.environ, HOME=str(self.home), XDG_CONFIG_HOME=str(self.config),
                         XDG_STATE_HOME=str(self.state), XDG_DATA_HOME=str(self.root / 'data'),
-                        XDG_CACHE_HOME=str(self.root / 'cache'), PATH=str(self.bin) + os.pathsep + os.environ['PATH'])
+                        XDG_CACHE_HOME=str(self.root / 'cache'), PATH=str(self.bin) + os.pathsep + str(self.home / '.local/bin') + os.pathsep + os.environ['PATH'])
         for program in ('niri', 'waybar', 'thunar', 'systemctl', 'rofi'):
             file = self.bin / program
             file.write_text('#!/bin/sh\nexit 0\n')

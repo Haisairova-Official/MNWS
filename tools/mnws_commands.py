@@ -1,0 +1,83 @@
+"""Install command symlinks into an existing PATH directory."""
+import os
+from pathlib import Path
+import shutil
+import subprocess
+import sys
+from mnws_launcher import ask
+from mnws_uninstall import read_inventory, save_inventory
+
+ROOT = Path(__file__).resolve().parent.parent
+SYSTEM_BIN = Path('/usr/local/bin')
+ENTRIES = {'mnws': 'mnws', 'mnws-config': 'tools/mnws-config.py',
+           'taskbar-toggle.sh': 'scripts/taskbar-toggle.sh',
+           'taskbar-state.sh': 'scripts/taskbar-state.sh'}
+
+
+def owned(path, relative, roots):
+    return path.is_symlink() and any(path.resolve() == (root / relative).resolve() for root in roots)
+
+
+def run(command, directory):
+    if not os.access(directory, os.W_OK):
+        if not shutil.which('sudo'):
+            raise RuntimeError('需要 sudo 才能修改 /usr/local/bin，请安装 sudo 或将 ~/.local/bin 加入 PATH 后重试。')
+        command = ['sudo', *command]
+    subprocess.run(command, check=True)
+
+
+def install():
+    paths = {Path(p).absolute() for p in os.environ.get('PATH', '').split(os.pathsep) if p}
+    local = Path.home() / '.local/bin'
+    if local in paths:
+        directory = local
+    else:
+        if SYSTEM_BIN not in paths or not SYSTEM_BIN.is_dir():
+            raise RuntimeError('/usr/local/bin 不在 PATH 中或不存在。请先将 ~/.local/bin 加入 PATH 后重新安装。')
+        while True:
+            answer = ask('~/.local/bin 不在 PATH 中。是否将命令链接安装到 /usr/local/bin（可能需要 sudo）？（Y/n/Ctrl+C）').lower()
+            if answer in ('', 'y'):
+                break
+            if answer == 'n':
+                raise RuntimeError('已取消命令安装。请将 ~/.local/bin 加入 PATH 后重试。')
+        directory = SYSTEM_BIN
+    data = read_inventory()
+    roots = {ROOT, Path(data.get('root') or ROOT)}
+    # Check every name before modifying anything; never overwrite another program.
+    for name, relative in ENTRIES.items():
+        path = directory / name
+        if (path.exists() or path.is_symlink()) and not owned(path, relative, roots):
+            raise RuntimeError(f'已有非 MNWS 命令，未覆盖：{path}')
+    directory.mkdir(parents=True, exist_ok=True)
+    for name, relative in ENTRIES.items():
+        source, path = ROOT / relative, directory / name
+        source.chmod(source.stat().st_mode | 0o111)
+        if path.is_symlink() and path.resolve() == source.resolve():
+            continue
+        if path.is_symlink():
+            run(['unlink', str(path)], directory)
+        run(['ln', '-s', str(source), str(path)], directory)
+        # Record partial progress as well, so a failed install remains removable.
+        data.setdefault('command_dirs', [])
+        if str(directory) not in data['command_dirs']:
+            data['command_dirs'].append(str(directory))
+        save_inventory(data)
+    data.setdefault('command_dirs', [])
+    if str(directory) not in data['command_dirs']:
+        data['command_dirs'].append(str(directory))
+    save_inventory(data)
+    print(f'命令入口已安装到 {directory}。')
+    resolved = shutil.which('mnws')
+    if resolved and Path(resolved).resolve() != (ROOT / 'mnws').resolve():
+        print(f'提示：PATH 中更靠前的命令遮挡了 MNWS：{resolved}；请使用 {directory}/mnws。')
+
+
+if __name__ == '__main__':
+    try:
+        install()
+    except (KeyboardInterrupt, EOFError):
+        print('\n已取消。', file=sys.stderr)
+        raise SystemExit(130)
+    except (OSError, RuntimeError, subprocess.CalledProcessError) as error:
+        print(f'命令安装未完成：{error}', file=sys.stderr)
+        raise SystemExit(1)

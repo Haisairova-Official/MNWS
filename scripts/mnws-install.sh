@@ -39,15 +39,7 @@ done
 python3 "$ROOT/tools/mnws_launcher.py" --apply "$CONFIG_DIR/modules.jsonc" "$LAUNCHER"
 python3 "$ROOT/tools/mnws_health.py" --init-desktop
 
-for script in taskbar-toggle.sh taskbar-state.sh; do
-    ln -sfn "$ROOT/scripts/$script" "$LOCAL_BIN/$script"
-    chmod +x "$ROOT/scripts/$script"
-    echo "已链接 ~/.local/bin/$script"
-done
-
-ln -sfn "$ROOT/tools/mnws-config.py" "$LOCAL_BIN/mnws-config"
-ln -sfn "$ROOT/mnws" "$LOCAL_BIN/mnws"
-chmod +x "$ROOT/mnws" "$ROOT/tools/mnws-config.py"
-echo
+python3 "$ROOT/tools/mnws_commands.py"
 python3 "$ROOT/tools/mnws_uninstall.py" --record
+"$ROOT/mnws" -v
 echo "安装完成。运行 mnws-config 打开统一设置；运行 mnws desktop --start（或 -s）启动桌面。"

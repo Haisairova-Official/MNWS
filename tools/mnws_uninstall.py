@@ -7,6 +7,7 @@ from pathlib import Path
 import re
 import shutil
 import sys
+import subprocess
 
 from mnws_health import config_home, state_home
 
@@ -98,10 +99,18 @@ def remove_owned_files(keep_config):
         roots.add(Path(previous_root))
     entries = {'mnws':'mnws', 'mnws-config':'tools/mnws-config.py',
                'taskbar-toggle.sh':'scripts/taskbar-toggle.sh', 'taskbar-state.sh':'scripts/taskbar-state.sh'}
-    for name, relative in entries.items():
-        path = Path.home() / '.local/bin' / name
-        if path.is_symlink() and any(path.resolve() == (root / relative).resolve() for root in roots):
-            path.unlink()
+    directories = {Path.home() / '.local/bin'}
+    if '/usr/local/bin' in data.get('command_dirs', []):
+        directories.add(Path('/usr/local/bin'))
+    for directory in directories:
+        for name, relative in entries.items():
+            path = directory / name
+            if path.is_symlink() and any(path.resolve() == (root / relative).resolve() for root in roots):
+                if os.access(directory, os.W_OK):
+                    path.unlink()
+                else:
+                    print(f'移除系统命令链接需要管理员权限：{path}')
+                    subprocess.run(['sudo', 'unlink', str(path)], check=True)
     for name, source in library_sources().items():
         path = Path.home() / '.local/lib/waybar' / name
         recorded = data.get('libraries', {}).get(name)
@@ -150,7 +159,7 @@ def uninstall():
                 return 1
         remove_autostart()
         remove_owned_files(keep_config)
-    except (OSError, ValueError) as error:
+    except (OSError, ValueError, subprocess.CalledProcessError) as error:
         print(f'卸载未完成：{error}', file=sys.stderr)
         return 1
     return 0

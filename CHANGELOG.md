@@ -1,5 +1,43 @@
 # Changelog / 更新记录
 
+## 1.22 G — 2026-09-09
+
+### 中文
+
+- 帮助新增版本、构建日期、更新摘要。（B）
+- 防止隐藏图标后的右键失效；顺便新增终端入口与退出确认。我觉得是个好功能。（C）
+- 统一组件启停、状态查询及六级日志。（D）
+- 移除了Koha D
+- 提升了超级牛力。（E）
+- 优化了安装逻辑，修复了一箩筐的bug（1.21）
+- 简化了install，并直接在程序中添加了uninstall选项。（F）
+- 优化了安装逻辑，启动器我之前忘记配置了。我的错。（1.22）
+- 优化了任务栏菜单。（G）
+
+### English
+
+- Add version, build date and update summaries to help. (B)
+- Fix the context menu when desktop icons are hidden; add a terminal entry and exit confirmation. I think it is a nice feature. (C)
+- Unify component start/stop controls, status queries and six logging levels. (D)
+- Remove Koha D.
+- Increase Super Cow Powers. (E)
+- Improve installation logic and fix a basketful of bugs. (1.21)
+- Simplify install and add an uninstall option directly to the program. (F)
+- Improve installation logic: I forgot to configure the launcher earlier. My mistake. (1.22)
+- Improve the taskbar menu. (G)
+
+### 本次改动 / Changes in this version
+
+- 开始按钮支持自定义文字与字符图标、读取当前内容、预览及自动选择发行版 Logo（需要 Nerd Fonts / Font Logos 字体支持）。
+- 命令优先链接到 PATH 中的 ~/.local/bin，否则询问安装到 /usr/local/bin；保护同名程序，卸载核对链接归属，不修改终端配置。
+- Customize the start button text or glyph, load its current content, preview it, and select a distribution logo (requires Nerd Fonts / Font Logos).
+- Link commands into ~/.local/bin when on PATH, otherwise offer /usr/local/bin; preserve unrelated commands and verify link ownership during uninstall without editing shell configuration.
+
+### 验证 / Validation
+
+- 52 项测试通过；发行版识别、回退图标与启动命令保留检查通过。未完成 GUI 视觉验证。
+- 52 tests passed; distribution detection, fallback glyph and launcher-command preservation checks passed. GUI visual verification remains outstanding.
+
 ## 1.22 F — 2026-09-09
 
 ### 中文

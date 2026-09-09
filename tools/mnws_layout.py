@@ -320,6 +320,41 @@ def enabled_plugins(layout: dict, available: list[dict]) -> list[dict]:
     return rows
 
 
+def distro_logo():
+    """Return the OS name and a Nerd Fonts / Font Logos glyph."""
+    import platform
+    try:
+        release = platform.freedesktop_os_release()
+    except OSError:
+        release = {}
+    logos = {"arch": "\uf303", "debian": "\uf306", "ubuntu": "\uf31b",
+             "fedora": "\uf30a", "linuxmint": "\uf30e", "manjaro": "\uf312",
+             "nixos": "\uf313", "gentoo": "\uf30d", "opensuse": "\uf314"}
+    candidates = [release.get("ID", ""), *release.get("ID_LIKE", "").split()]
+    glyph = next((logos[key] for key in candidates if key in logos), "\uf17c")
+    return release.get("PRETTY_NAME", "Linux"), glyph
+
+
+def launcher_definition(base=None):
+    definition, visited = {}, set()
+    def read(obj, parent):
+        includes = obj.get("include", [])
+        if isinstance(includes, str):
+            includes = [includes]
+        for name in includes:
+            path = Path(os.path.expandvars(name)).expanduser()
+            path = (path if path.is_absolute() else parent / path).resolve()
+            if path in visited:
+                continue
+            visited.add(path)
+            read(parse_jsonc(path.read_text()), path.parent)
+        value = obj.get("custom/applauncher")
+        if isinstance(value, dict):
+            definition.update(value)
+    read(base if base is not None else (read_live_config() or default_base_config()), live_config_path().parent)
+    return definition
+
+
 def render_waybar_config(layout: dict, available: list[dict] | None = None,
                          base: dict | None = None,
                          base_from_live: bool = True) -> dict:
@@ -334,6 +369,13 @@ def render_waybar_config(layout: dict, available: list[dict] | None = None,
     cfg["fixed-center"] = True
 
     options = layout.get("options", {}) if isinstance(layout.get("options"), dict) else {}
+
+    if "start_label" in options or options.get("start_icon_mode") == "distro":
+        import html
+        definition = launcher_definition(cfg)
+        text = distro_logo()[1] if options.get("start_icon_mode") == "distro" else str(options.get("start_label") or "Apps")
+        definition["format"] = html.escape(text).replace("{", "{{").replace("}", "}}")
+        cfg["custom/applauncher"] = definition
 
     items = enabled_builtins(layout) + enabled_plugins(layout, available)
     slots = {"left": [], "center": [], "right": []}
