@@ -1,5 +1,6 @@
 """Start and stop MNWS components without matching unrelated command lines."""
 import argparse
+import json
 import os
 from pathlib import Path
 import signal
@@ -45,6 +46,19 @@ def pids(component):
 
 def help_text(component=None):
     title = "MNWS — My Niri Workspace Solution"
+    try:
+        info = json.loads((ROOT / 'build-info.json').read_text(encoding='utf-8'))
+        if not isinstance(info, dict):
+            info = {}
+    except (OSError, ValueError):
+        info = {}
+    minor = info.get('minor_version', '未知')
+    major = info.get('major_version', '未知')
+    build_date = info.get('build_date', '未知')
+    changes = info.get('changes', [])
+    if not isinstance(changes, list):
+        changes = []
+    summary = '\n'.join(f'  · {entry}' for entry in changes if isinstance(entry, str)) or '  暂无更新摘要。'
     if component:
         commands = ""
         usage = f"mnws {component} <选项>"
@@ -69,6 +83,11 @@ def help_text(component=None):
 """
     target = component or "desktop"
     return f"""{title}
+Major {major}    Minor：{minor}    构建日期：{build_date}
+
+最新更新：
+{summary}
+
 用法：{usage}
 
 {commands}组件选项（desktop / taskbar；每次选择一项）：
@@ -91,6 +110,8 @@ def help_text(component=None):
 启动成功不输出提示；失败时输出错误。
 调试模式先停止旧实例；结束后用 -s 恢复后台运行。
 停止 desktop 后桌面右键失效；--status 未运行时返回 1。
+
+我不知道 MNWS 含不含有超级牛力。
 """
 
 
