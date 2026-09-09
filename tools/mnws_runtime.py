@@ -44,14 +44,17 @@ def pids(component):
 
 
 
-def help_text(component=None):
-    title = "MNWS — My Niri Workspace Solution"
+def build_info():
     try:
         info = json.loads((ROOT / 'build-info.json').read_text(encoding='utf-8'))
-        if not isinstance(info, dict):
-            info = {}
+        return info if isinstance(info, dict) else {}
     except (OSError, ValueError):
-        info = {}
+        return {}
+
+
+def help_text(component=None):
+    title = "MNWS — My Niri Workspace Solution"
+    info = build_info()
     minor = info.get('minor_version', '未知')
     major = info.get('major_version', '未知')
     build_date = info.get('build_date', '未知')
@@ -65,6 +68,7 @@ def help_text(component=None):
     else:
         usage = "mnws <命令> [选项]"
         commands = """全局选项：
+  -v                   仅显示版本
   --status             同时查看桌面和任务栏状态
 
 命令：
@@ -119,8 +123,52 @@ class HelpParser(argparse.ArgumentParser):
     def format_help(self):
         return help_text(self.component_help)
 
+
+def moo(argv):
+    if argv == ['moo']:
+        print('这里应该有个彩蛋吗？')
+        return 0
+    others = [arg for arg in argv if arg != 'moo']
+    if len(argv) != 2 or argv.count('moo') != 1 or len(others) != 1:
+        print('不，不是这样用的。')
+        return 0
+    flag = others[0]
+    if not flag.startswith('-v') or set(flag[1:]) != {'v'}:
+        print('不，不是这样用的。')
+        return 0
+    count = len(flag) - 1
+    messages = (
+        '这个程序需要这样的彩蛋吗？',
+        '这个程序我真没打算加入彩蛋。',
+        '你真的有够无聊的。',
+        '别玩了！做点更有意义的事去吧！',
+        '我叫你停下。',
+        '好吧，好吧。如果我给你彩蛋，你会满意吗？',
+    )
+    if count <= len(messages):
+        print(messages[count - 1], flush=True)
+    if count == 7:
+        try:
+            subprocess.Popen(['xdg-open', 'https://www.bilibili.com/video/BV1GJ411x7h7'],
+                             stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+                             start_new_session=True)
+        except OSError:
+            pass
+    if count >= 8:
+        print('喜欢吗？')
+    return 0
+
 def main(argv=None, quiet=False):
     argv = list(sys.argv[1:] if argv is None else argv)
+    if "moo" in argv:
+        return moo(argv)
+    if len(argv) == 1 and argv[0].startswith('-v') and set(argv[0][1:]) == {'v'}:
+        if argv[0] == '-v':
+            info = build_info()
+            print(f"Major {info.get('major_version', '未知')}    Minor：{info.get('minor_version', '未知')}")
+        else:
+            print("不，不是这样用的。")
+        return 0
     if argv == ["--status"]:
         return max(main(["desktop", "--status"]), main(["taskbar", "--status"]))
     parser = HelpParser(prog="mnws", add_help=False)
