@@ -1,5 +1,43 @@
 # Changelog / 更新记录
 
+## 1.23 H — 2026-09-09
+
+### 中文
+
+- 帮助新增版本、构建日期、更新摘要。（B）
+- 防止隐藏图标后的右键失效；顺便新增终端入口与退出确认。我觉得是个好功能。（C）
+- 统一组件启停、状态查询及六级日志。（D）
+- 移除了Koha D
+- 提升了超级牛力。（E）
+- 优化了安装逻辑，修复了一箩筐的bug（1.21）
+- 简化了install，并直接在程序中添加了uninstall选项。（F）
+- 优化了安装逻辑，启动器我之前忘记配置了。我的错。（1.22）
+- 优化了任务栏菜单。（G）
+- 优化了命令行参数处理逻辑。（H）
+
+### English
+
+- Add version, build date and update summaries to help. (B)
+- Fix the context menu when desktop icons are hidden; add a terminal entry and exit confirmation. I think it is a nice feature. (C)
+- Unify component start/stop controls, status queries and six logging levels. (D)
+- Remove Koha D.
+- Increase Super Cow Powers. (E)
+- Improve installation logic and fix a basketful of bugs. (1.21)
+- Simplify install and add an uninstall option directly to the program. (F)
+- Improve installation logic: I forgot to configure the launcher earlier. My mistake. (1.22)
+- Improve the taskbar menu. (G)
+- Improve command-line argument handling. (H)
+
+### 本次改动 / Changes in this version
+
+- 组件与短、长操作参数支持前后互换；省略组件时，启动、停止、强制结束、重启及状态查询作用于桌面和任务栏。调试仍需指定单个组件。
+- Accept component names before or after short and long operation options. Without a component, start, stop, kill, restart and status target both desktop and taskbar. Debugging still requires a single component.
+
+### 验证 / Validation
+
+- 56 项测试通过，包含参数顺序、一键启动、无效参数拒绝及命令入口转发。
+- 56 tests passed, including argument ordering, starting both components, invalid-argument rejection and command dispatch.
+
 ## 1.22 G — 2026-09-09
 
 ### 中文

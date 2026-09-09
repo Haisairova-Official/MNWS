@@ -133,11 +133,14 @@ Major {major}    Minor：{minor}    构建日期：{build_date}
   -1 致命   -2 错误   -3 警告   -4 信息   -5 调试   -6 跟踪
 
 示例：
+  mnws -s
+  mnws -s {target}
   mnws {target} -s
   mnws {target} -d -6
   mnws {target} --status
 
-启动成功不输出提示；失败时输出错误。
+组件与选项可前后互换；省略组件时，启停、重启和状态查询同时作用于桌面和任务栏。
+调试须指定一个组件。启动成功不输出提示；失败时输出错误。
 调试模式先停止旧实例；结束后用 -s 恢复后台运行。
 停止 desktop 后桌面右键失效；--status 未运行时返回 1。
 
@@ -195,12 +198,10 @@ def main(argv=None, quiet=False):
         else:
             print("不，不是这样用的。")
         return 0
-    if argv == ["--status"]:
-        return max(main(["desktop", "--status"]), main(["taskbar", "--status"]))
     parser = HelpParser(prog="mnws", add_help=False)
-    parser.component_help = argv[0] if argv and argv[0] in ('desktop', 'taskbar') else None
+    parser.component_help = next((arg for arg in argv if arg in ('desktop', 'taskbar')), None)
     parser.add_argument('-h', '--help', '-?', action='help')
-    parser.add_argument('component', choices=('desktop', 'taskbar'))
+    parser.add_argument('component', nargs='?', choices=('desktop', 'taskbar'))
     action = parser.add_mutually_exclusive_group(required=True)
     action.add_argument('--start', '-s', action='store_true')
     action.add_argument('--stop', '-S', action='store_true')
@@ -215,6 +216,12 @@ def main(argv=None, quiet=False):
     args = parser.parse_args(argv)
     if args.log_level is not None and not args.debug:
         parser.error('-1 到 -6 仅用于 --debug/-d')
+    if args.component is None:
+        if args.debug:
+            parser.error('调试需要指定 desktop 或 taskbar，例如 mnws -d desktop -6')
+        operation = next('--' + name for name in ('start', 'stop', 'kill', 'restart', 'status') if getattr(args, name))
+        results = [main([component, operation], quiet=quiet) for component in ('desktop', 'taskbar')]
+        return max(results)
     level = args.log_level or 4
     targets = pids(args.component)
     if args.status:

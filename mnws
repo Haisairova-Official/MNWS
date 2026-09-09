@@ -18,6 +18,12 @@ for argument in "$@"; do
     fi
 done
 
+# Component operations accept either argument order; validate all arguments in Python.
+case "${1:-}" in
+    -s|--start|-S|--stop|-k|--kill|-r|--restart|-d|--debug|--status|-1|-2|-3|-4|-5|-6)
+        exec python3 "$ROOT/tools/mnws_runtime.py" "$@" ;;
+esac
+
 # Help must not run component-changing commands (for example install -h).
 if [[ "${2:-}" == "-h" || "${2:-}" == "--help" || "${2:-}" == "-?" ]]; then
     case "${1:-}" in

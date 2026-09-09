@@ -6,7 +6,7 @@
 
 **A simpler desktop solution for Niri.**
 
-当前版本 / Current version: **1.22 G** · [更新记录 / Changelog](CHANGELOG.md)
+当前版本 / Current version: **1.23 H** · [更新记录 / Changelog](CHANGELOG.md)
 
 [中文](#中文) · [English](#english)
 
