@@ -39,4 +39,4 @@ ln -sfn "$ROOT/tools/mnws-config.py" "$LOCAL_BIN/mnws-config"
 ln -sfn "$ROOT/mnws" "$LOCAL_BIN/mnws"
 chmod +x "$ROOT/mnws" "$ROOT/tools/mnws-config.py"
 echo
-echo "安装完成。运行 mnws-config 打开统一设置。"
+echo "安装完成。运行 mnws-config 打开统一设置；运行 mnws desktop --start（或 -s）启动桌面。"

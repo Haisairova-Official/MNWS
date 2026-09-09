@@ -4,23 +4,24 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "$(readlink -f "${BASH_SOURCE[0]}")")" && pwd)"
 
 usage() {
-    cat <<EOF
-MNWS — My Niri Workspace Solution
-
-用法:
-  mnws config [--tab desktop|taskbar|components]   打开统一设置
-  mnws check                                       检查组件与配置状态
-  mnws build-taskbar                               重新编译底部任务栏模块
-  mnws restart taskbar|desktop                     重启组件
-  mnws install                                     安装配置与启动器
-  mnws autostart on|off|status                     桌面图标层随 Niri 登录自启
-  mnws layout show|render|apply                    任务栏组件布局（内置组件/.mplg 插件）
-  mnws mplg init|build|add|list|run|validate|...   .mplg 插件包工具
-  mnws help                                        显示帮助
-EOF
+    python3 "$ROOT/tools/mnws_runtime.py" --help
 }
 
+# Help must not run component-changing commands (for example install -h).
+if [[ "${2:-}" == "-h" || "${2:-}" == "--help" || "${2:-}" == "-?" ]]; then
+    case "${1:-}" in
+        desktop|taskbar) exec python3 "$ROOT/tools/mnws_runtime.py" "$1" --help ;;
+        *) usage; exit 0 ;;
+    esac
+fi
+
 case "${1:-help}" in
+    --status)
+        exec python3 "$ROOT/tools/mnws_runtime.py" "$@"
+        ;;
+    desktop|taskbar)
+        exec python3 "$ROOT/tools/mnws_runtime.py" "$@"
+        ;;
     config)
         shift
         exec python3 "$ROOT/tools/mnws-config.py" "$@"
@@ -71,7 +72,7 @@ case "${1:-help}" in
                 ;;
         esac
         ;;
-    help|-h|--help)
+    help|-h|--help|'-?')
         usage
         ;;
     *)

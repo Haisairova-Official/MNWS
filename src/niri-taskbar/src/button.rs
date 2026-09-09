@@ -155,6 +155,7 @@ impl Button {
                 return gtk::glib::Propagation::Proceed;
             }
 
+            tracing::info!(id = window_id, "打开窗口右键菜单");
             let menu = gtk::Menu::new();
             let focus = gtk::MenuItem::with_label("聚焦窗口");
             let minimize = gtk::MenuItem::with_label("最小化 / 还原");

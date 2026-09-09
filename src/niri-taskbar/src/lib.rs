@@ -63,6 +63,9 @@ impl Module for TaskbarModule {
         let context = MainContext::default();
         if let Err(e) = context.block_on(init(info, state)) {
             tracing::error!(%e, "Niri taskbar module init failed");
+            if std::env::var("MNWS_LOG_LEVEL").as_deref() == Ok("1") {
+                eprintln!("CRITICAL: Niri taskbar module init failed: {e}");
+            }
         }
 
         module

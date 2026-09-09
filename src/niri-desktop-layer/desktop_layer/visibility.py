@@ -7,13 +7,13 @@ LOG = logging.getLogger("desktop-layer.visibility")
 
 
 class WindowFade:
-    """Animate content only while transitioning; unmap after fade-out."""
+    """Fade icons while keeping the desktop surface available for its menu."""
     def __init__(self, window, content, hidden=False):
         self.window, self.content = window, content
         self.pending = 0
         self.hidden = hidden
         content.set_opacity(0.0 if hidden else 1.0)
-        content.set_sensitive(not hidden)
+        content.set_sensitive(True)
 
     def set_hidden(self, hidden):
         self.close()
@@ -21,9 +21,8 @@ class WindowFade:
         self.start_opacity = self.content.get_opacity()
         self.target = 0.0 if hidden else 1.0
         self.started = GLib.get_monotonic_time()
-        self.content.set_sensitive(not hidden)
-        if not hidden:
-            self.window.show_all()
+        self.content.set_sensitive(True)
+        self.window.show_all()
         self.pending = GLib.timeout_add(16, self.step)
 
     def step(self):
@@ -33,8 +32,6 @@ class WindowFade:
         if t < 1.0:
             return True
         self.pending = 0
-        if self.hidden:
-            self.window.hide()
         return False
 
     def close(self):

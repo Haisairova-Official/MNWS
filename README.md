@@ -6,6 +6,8 @@
 
 **A simpler desktop solution for Niri.**
 
+当前里程碑 / Current milestone: **1.2** · [更新记录 / Changelog](CHANGELOG.md)
+
 [中文](#中文) · [English](#english)
 
 ## 中文
@@ -65,7 +67,7 @@ install -m644 src/niri-desktop-layer/integration/libwaybar-space.so "$HOME/.loca
 用 `niri validate` 检查配置。启动桌面图标层：
 
 ```sh
-./src/niri-desktop-layer/start-desktop-layer
+mnws desktop --start  # 或 mnws desktop -s
 ./mnws autostart on
 ```
 
@@ -131,7 +133,7 @@ If keeping existing shared configuration, make sure it defines `custom/applaunch
 Keep the checkout after installation and add `~/.local/bin` to your `PATH`.
 
 Add the rules in [config/mnws-windows.kdl](config/mnws-windows.kdl) to your Niri configuration to make settings windows float, then check with `niri validate`.
-Start the desktop icon layer with `./src/niri-desktop-layer/start-desktop-layer`.
+Start the desktop icon layer with `mnws desktop --start` (or `mnws desktop -s`).
 Use `./mnws autostart on` to enable desktop-icon autostart; add taskbar startup to your own session configuration separately.
 
 ### Usage and plugins
@@ -164,3 +166,46 @@ make -C src/panel-rows check
 ```
 
 GUI checks require Xvfb. These checks do not replace testing in a real Niri session.
+
+### Component commands / 组件命令
+
+| Command / 命令 | Action / 操作 |
+| --- | --- |
+| `mnws desktop --start` / `mnws desktop -s` | Start desktop / 启动桌面 |
+| `mnws desktop --stop` / `mnws desktop -S` | Stop desktop / 正常停止桌面 |
+| `mnws desktop --kill` / `mnws desktop -k` | Force quit desktop / 强制结束桌面 |
+| `mnws taskbar --start` / `mnws taskbar -s` | Start taskbar / 启动任务栏 |
+| `mnws taskbar --stop` / `mnws taskbar -S` | Stop taskbar / 正常停止任务栏 |
+| `mnws taskbar --kill` / `mnws taskbar -k` | Force quit taskbar / 强制结束任务栏 |
+
+Stopping the desktop also disables its context menu. Start it again with `mnws desktop -s`.
+停止桌面后，桌面右键菜单也会失效；可用 `mnws desktop -s` 恢复。
+
+Debug either component in the current terminal with `mnws desktop -d` or `mnws taskbar -d` (`--debug`).
+This gracefully stops the existing instance first. Ctrl+C stops the foreground instance; use `-s` to start it in the background again.
+使用 `mnws desktop -d` 或 `mnws taskbar -d`（`--debug`）在当前终端启动并输出日志；已有实例会先正常停止。
+按 Ctrl+C 结束调试后，可用 `-s` 恢复后台运行。
+
+Use `mnws desktop --status` / `mnws taskbar --status` for status (exit code 0: running, 1: stopped),
+and `mnws desktop -r` / `mnws taskbar -r` (`--restart`) to restart.
+`--status` 查询状态（运行返回 0，未运行返回 1），`--restart/-r` 重启组件。`--help/-h` 查看命令帮助。
+
+### Log levels / 日志级别
+
+`mnws desktop --debug -4` / `mnws taskbar -d -6`
+
+| Level / 级别 | Output / 输出 |
+| --- | --- |
+| `-1` | Critical / 致命错误 |
+| `-2` | Error / 错误及以上 |
+| `-3` | Warning / 警告及以上 |
+| `-4` (default / 默认) | Info / 操作请求、菜单选择、弹窗响应与结果 |
+| `-5` | Debug / 调试细节 |
+| `-6` | Trace / 高频事件跟踪 |
+
+The level flag requires `--debug/-d`. Lower numbers filter out routine operations.
+日志数字参数必须与 `--debug/-d` 一起使用；较低级别会过滤普通操作日志。
+A submitted launch request does not prove that the external application opened successfully.
+日志中的“启动请求已提交”表示请求已发出，不代表外部应用已成功打开。
+
+`mnws --status` shows both desktop and taskbar status. / 同时显示桌面和任务栏状态。

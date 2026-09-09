@@ -23,10 +23,32 @@ from .model import (scan_desktop, desktop_directory, launch_entry, UntrustedLaun
                     atomic_save_json, arrange_grid, sort_entries, open_in_thunar,
                     file_manager_location)
 
+TRACE = 5
+logging.addLevelName(TRACE, "TRACE")
 LOG = logging.getLogger("desktop-layer")
+
+
+def logged_action(label):
+    """Record requests and handler completion; external app success is not implied."""
+    from functools import wraps
+    def decorate(callback):
+        @wraps(callback)
+        def run(*args, **kwargs):
+            LOG.info("操作请求：%s", label)
+            try:
+                result = callback(*args, **kwargs)
+            except Exception:
+                LOG.exception("操作异常：%s", label)
+                raise
+            LOG.debug("操作处理返回：%s", label)
+            return result
+        return run
+    return decorate
+
 APP_ID = "io.github.akizuki.NiriDesktopLayer"
 
 
+@logged_action("打开统一设置")
 def open_mnws_config(tab: str) -> bool:
     """Try to open the unified MNWS-Config app; return False when unavailable."""
     import subprocess
@@ -113,6 +135,10 @@ def apply_menu_palette(menu, cfg) -> None:
         '}\n'
     ) % (background, foreground, font, foreground, hover, foreground, outline)
 
+    css += ("menu menuitem.desktop-exit:hover, menu menuitem.desktop-exit:selected {"
+            "background-image: none; background-color: #b3261e; color: #ffffff; }"
+            "menu menuitem.desktop-exit:hover label, menu menuitem.desktop-exit:selected label {"
+            "color: #ffffff; }")
     try:
         provider = Gtk.CssProvider()
         provider.load_from_data(css.encode("utf-8"))
@@ -124,7 +150,8 @@ def apply_menu_palette(menu, cfg) -> None:
         widget.get_style_context().add_provider(
             provider, Gtk.STYLE_PROVIDER_PRIORITY_APPLICATION
         )
-        for child in widget.get_children():
+        for child in widget.get_children() if isinstance(widget, Gtk.Container) else []:
+            attach(child)
             if isinstance(child, Gtk.MenuItem):
                 submenu = child.get_submenu()
                 if submenu is not None:
@@ -148,6 +175,8 @@ def arguments(argv=None):
     parser.add_argument("--smoke-test", type=float, metavar="SECONDS", help="运行指定秒数后自动退出")
     parser.add_argument("--diagnostics", type=Path, help="退出前写入运行诊断 JSON")
     parser.add_argument("--snapshot", type=Path, help="保存图标画布 PNG（仅图标，不截取桌面）")
+    parser.add_argument("--debug", action="store_true", help="输出详细调试日志")
+    parser.add_argument("--log-level", type=int, choices=range(1, 7), default=4)
     args = parser.parse_args(argv)
     for key in ("config", "state", "directory", "diagnostics", "snapshot"):
         value = getattr(args, key)
@@ -159,8 +188,9 @@ def arguments(argv=None):
 
 
 def main(argv=None):
-    logging.basicConfig(level=logging.INFO, format="%(levelname)s %(message)s")
     args = arguments(argv)
+    logging.basicConfig(level=(logging.CRITICAL, logging.ERROR, logging.WARNING, logging.INFO, logging.DEBUG, TRACE)[args.log_level - 1],
+                        format="%(asctime)s %(levelname)s %(name)s: %(message)s")
     try:
         import gi
         gi.require_version("Gtk", "3.0")
@@ -212,10 +242,10 @@ def main(argv=None):
         # Define GTK classes only after backend selection; --check needs no display.
         return run_gui(args, cfg, directory)
     except (ImportError, ValueError, OSError, RuntimeError) as exc:
-        LOG.error("%s", exc)
+        LOG.critical("%s", exc)
         return 1
     except Exception as exc:
-        LOG.error("%s: %s", type(exc).__name__, exc)
+        LOG.critical("%s: %s", type(exc).__name__, exc)
         return 1
 
 
@@ -249,6 +279,7 @@ def run_gui(args, cfg, directory):
             self.icons = {}
             self.menu = None
             self.launch_dialog = None
+            self.exit_dialog = None
             self.pending_opens = []
             self.columns = self.rows = 1
             self.layout_pending = 0
@@ -300,8 +331,7 @@ def run_gui(args, cfg, directory):
             self.connect("notify::scale-factor", lambda *_: self.invalidate_icons())
             self.connect("destroy", self.destroyed)
             self.fade = WindowFade(self, self.area, application.hidden)
-            if not application.hidden:
-                self.show_all()
+            self.show_all()
 
         def monitor_resized(self, *_):
             width = min(self.monitor.get_geometry().width, cfg.columns * cfg.cell_width + 2 * cfg.margin)
@@ -366,7 +396,7 @@ def run_gui(args, cfg, directory):
             # The desktop accepts empty-space drags for marquee selection. During
             # overview it yields all pointer input back to the compositor.
             region = cairo.Region()
-            if not self.owner.overview_active and not self.owner.hidden:
+            if not self.owner.overview_active:
                 region.union(cairo.RectangleInt(0, 0, self.area.get_allocated_width(),
                                                 self.area.get_allocated_height()))
             self.get_window().input_shape_combine_region(region, 0, 0)
@@ -490,6 +520,7 @@ def run_gui(args, cfg, directory):
             return self.blur_cache[0]
 
         def draw(self, _widget, cr):
+            LOG.log(TRACE, "绘制桌面：output=%s", self.monitor_key)
             cr.set_operator(cairo.OPERATOR_SOURCE)
             cr.set_source_rgba(0, 0, 0, 0)
             cr.paint()
@@ -524,6 +555,7 @@ def run_gui(args, cfg, directory):
             self.area.queue_draw()
 
         def key_press(self, _widget, event):
+            LOG.debug("桌面按键：keyval=%s", event.keyval)
             if self.owner.overview_active or self.owner.hidden:
                 return False
             control = bool(event.state & Gdk.ModifierType.CONTROL_MASK)
@@ -549,7 +581,13 @@ def run_gui(args, cfg, directory):
             return False
 
         def button_press(self, _widget, event):
-            if self.owner.overview_active or self.owner.hidden:
+            LOG.debug("鼠标按下：button=%s x=%.1f y=%.1f", event.button, event.x, event.y)
+            if self.owner.overview_active:
+                return False
+            if self.owner.hidden:
+                if event.button == 3:
+                    self.popup(event, None)
+                    return True
                 return False
             key = self.hit(event.x, event.y)
             if event.button == 3:
@@ -635,6 +673,7 @@ def run_gui(args, cfg, directory):
             self.selection_changed()
             return True
 
+        @logged_action("移动选中图标")
         def move_selection(self, dx, dy):
             layout = {k: (int((r[0]-cfg.margin)//cfg.cell_width), int((r[1]-cfg.margin)//cfg.cell_height))
                       for k,r in self.rects.items()}
@@ -644,6 +683,7 @@ def run_gui(args, cfg, directory):
                 self.owner.save_state()
                 self.relayout()
 
+        @logged_action("移动图标")
         def move_icon(self, key, x, y):
             if key not in self.rects:
                 return
@@ -655,6 +695,7 @@ def run_gui(args, cfg, directory):
                                 target_row-int((old[1]-cfg.margin)//cfg.cell_height))
 
         def motion(self, _widget, event):
+            LOG.log(TRACE, "鼠标移动：x=%.1f y=%.1f", event.x, event.y)
             if self.owner.overview_active or self.owner.hidden:
                 return False
             self.hover = self.hit(event.x, event.y)
@@ -676,6 +717,8 @@ def run_gui(args, cfg, directory):
             return False
 
         def tooltip(self, _widget, x, y, keyboard, tooltip):
+            if self.owner.hidden or self.owner.overview_active:
+                return False
             if keyboard or self.dragging or self.marquee:
                 return False
             entry = self.entry(self.hit(x, y))
@@ -687,6 +730,7 @@ def run_gui(args, cfg, directory):
                 return True
             return False
 
+        @logged_action("翻页")
         def change_page(self, step):
             self.page = (self.page + step) % self.pages()
             self.selection.clear()
@@ -709,6 +753,7 @@ def run_gui(args, cfg, directory):
                         self.scroll_accumulator = 0.0
             return True
 
+        @logged_action("打开桌面项目")
         def open_entry(self, key, event=None, allow=False):
             if self.launch_dialog:
                 self.launch_dialog.present()
@@ -717,6 +762,7 @@ def run_gui(args, cfg, directory):
             self.launch_time = event.time if event is not None else Gtk.get_current_event_time()
             self.process_open_queue(allow_first=allow)
 
+        @logged_action("处理打开队列")
         def process_open_queue(self, allow_first=False):
             while self.pending_opens:
                 key = self.pending_opens.pop(0)
@@ -726,7 +772,9 @@ def run_gui(args, cfg, directory):
                 try:
                     context = self.get_display().get_app_launch_context()
                     context.set_timestamp(getattr(self, "launch_time", Gtk.get_current_event_time()))
+                    LOG.info("项目打开请求：%s", entry.path)
                     launch_entry(entry, context, allow_untrusted=allow_first)
+                    LOG.info("项目打开请求已提交：%s", entry.path)
                     allow_first = False
                 except UntrustedLauncher:
                     self.confirm_launch(entry)
@@ -736,6 +784,7 @@ def run_gui(args, cfg, directory):
                     self.confirm_launch(entry, error=str(exc))
                     return
 
+        @logged_action("打开快捷方式确认框")
         def confirm_launch(self, entry, error=None):
             title = "无法打开项目" if error else "运行此快捷方式？"
             dialog = Gtk.MessageDialog(transient_for=self, modal=True, destroy_with_parent=True,
@@ -770,6 +819,7 @@ def run_gui(args, cfg, directory):
                 else:
                     self.pending_opens.clear()
             dialog.connect("response", response)
+            dialog.connect("response", lambda w, result: LOG.info("弹窗响应：%s，结果=%s", w.get_title(), result))
             dialog.show_all()
 
         def make_menu(self, key):
@@ -778,7 +828,7 @@ def run_gui(args, cfg, directory):
                 widget = Gtk.MenuItem(label=label)
                 widget.set_sensitive(callback is not None)
                 if callback:
-                    widget.connect("activate", lambda *_: callback())
+                    widget.connect("activate", lambda *_: (LOG.info("菜单操作：%s", label), callback()))
                 parent.append(widget)
                 return widget
             def separator(parent):
@@ -795,13 +845,19 @@ def run_gui(args, cfg, directory):
                     widget = Gtk.RadioMenuItem.new_with_label_from_widget(group, label)
                     group = widget
                     widget.set_active(value == selected)
-                    widget.connect("activate", lambda w, value=value: callback(value) if w.get_active() else None)
+                    widget.connect("activate", lambda w, value=value, label=label: (LOG.info("菜单选择：%s", label), callback(value)) if w.get_active() else None)
                     parent.append(widget)
             def check(parent, label, active, callback):
                 widget = Gtk.CheckMenuItem(label=label)
                 widget.set_active(active)
-                widget.connect("toggled", lambda w: callback(w.get_active()))
+                widget.connect("toggled", lambda w: (LOG.info("菜单开关：%s=%s", label, w.get_active()), callback(w.get_active())))
                 parent.append(widget)
+            if self.owner.hidden:
+                item(menu, "显示桌面图标", self.owner.toggle)
+                separator(menu)
+                item(menu, "打开终端", self.owner.open_terminal)
+                item(menu, "打开桌面文件夹", self.owner.open_directory)
+                return menu
             if not key:
                 new_menu = submenu("新建")
                 item(new_menu, "文件夹", lambda: self.create_item("folder", "新建文件夹"))
@@ -837,6 +893,7 @@ def run_gui(args, cfg, directory):
             separator(menu)
             item(menu, "全选", self.select_all)
             item(menu, "取消选择", self.clear_selection if self.selection else None)
+            item(menu, "打开终端", self.owner.open_terminal)
             item(menu, "打开桌面文件夹", self.owner.open_directory)
             if key:
                 separator(menu)
@@ -848,9 +905,45 @@ def run_gui(args, cfg, directory):
             separator(menu)
             item(menu, "桌面设置…", self.show_desktop_settings)
             item(menu, "隐藏桌面图标", self.owner.toggle)
-            item(menu, "退出桌面图标", self.owner.quit)
+            exit_item = item(menu, "退出桌面图标", self.confirm_exit)
+            exit_item.get_style_context().add_class("desktop-exit")
             return menu
 
+        @logged_action("打开退出确认框")
+        def confirm_exit(self):
+            import shlex
+            if self.exit_dialog is not None:
+                self.exit_dialog.present()
+                return
+            launcher = Path(__file__).resolve().parents[3] / "mnws"
+            restart_command = "mnws desktop --start" if shutil.which("mnws") else shlex.quote(str(launcher)) + " desktop --start"
+            dialog = Gtk.MessageDialog(transient_for=self, modal=True, destroy_with_parent=True,
+                                       message_type=Gtk.MessageType.WARNING,
+                                       buttons=Gtk.ButtonsType.NONE, text="您真的要退出吗？")
+            dialog.format_secondary_text("退出后桌面图标和桌面右键功能将失效。\n"
+                                         "您可以输入以下命令重启：")
+            command = Gtk.Entry()
+            command.set_text(restart_command)
+            command.set_editable(False)
+            command.set_tooltip_text("可选中并复制此命令，在终端中运行")
+            dialog.get_content_area().pack_start(command, False, False, 8)
+            dialog.add_button("取消", Gtk.ResponseType.CANCEL)
+            confirm = dialog.add_button("退出桌面", Gtk.ResponseType.ACCEPT)
+            confirm.get_style_context().add_class("destructive-action")
+            dialog.set_default_response(Gtk.ResponseType.CANCEL)
+            self.exit_dialog = dialog
+            def response(widget, result):
+                widget.destroy()
+                if result == Gtk.ResponseType.ACCEPT:
+                    self.owner.quit()
+            def destroyed(*_):
+                self.exit_dialog = None
+            dialog.connect("destroy", destroyed)
+            dialog.connect("response", response)
+            dialog.connect("response", lambda w, result: LOG.info("弹窗响应：%s，结果=%s", w.get_title(), result))
+            dialog.show_all()
+
+        @logged_action("打开桌面右键菜单")
         def popup(self, event, key):
             if self.menu:
                 self.menu.destroy()
@@ -865,10 +958,12 @@ def run_gui(args, cfg, directory):
         def chosen_entries(self):
             return [entry for entry in self.owner.entries if str(entry.path) in self.selection]
 
+        @logged_action("复制文件路径")
         def copy_paths(self):
             paths = "\n".join(str(entry.path) for entry in self.chosen_entries())
             Gtk.Clipboard.get(Gdk.SELECTION_CLIPBOARD).set_text(paths, -1)
 
+        @logged_action("在文件管理器中显示选中项目")
         def reveal_selected(self):
             self.owner.reveal_files(self.chosen_entries())
 
@@ -886,6 +981,7 @@ def run_gui(args, cfg, directory):
                     return target
                 index += 1
 
+        @logged_action("打开名称输入框")
         def ask_name(self, title, default):
             dialog = Gtk.Dialog(title=title, transient_for=self, modal=True, destroy_with_parent=True)
             dialog.add_button("取消", Gtk.ResponseType.CANCEL)
@@ -904,6 +1000,7 @@ def run_gui(args, cfg, directory):
             entry.set_activates_default(True)
             content.add(label)
             content.add(entry)
+            dialog.connect("response", lambda w, result: LOG.info("弹窗响应：%s，结果=%s", w.get_title(), result))
             dialog.show_all()
             entry.grab_focus()
             value = default
@@ -912,6 +1009,7 @@ def run_gui(args, cfg, directory):
             dialog.destroy()
             return value or None
 
+        @logged_action("新建项目")
         def create_item(self, kind, default):
             titles = {"folder": "新建文件夹", "text": "新建文本文档", "markdown": "新建 Markdown 文档"}
             name = self.ask_name(titles[kind], default)
@@ -941,6 +1039,7 @@ def run_gui(args, cfg, directory):
                 self.selection_anchor = key
             self.selection_changed()
 
+        @logged_action("移到回收站")
         def trash_selected(self):
             entries = self.chosen_entries()
             if not entries:
@@ -957,6 +1056,7 @@ def run_gui(args, cfg, directory):
             if failures:
                 self.show_error("部分项目未能删除", "\n".join(failures))
 
+        @logged_action("打开永久删除确认框")
         def confirm_permanent_delete(self):
             entries = self.chosen_entries()
             if not entries:
@@ -974,6 +1074,7 @@ def run_gui(args, cfg, directory):
                 return
             self.delete_permanently(entries)
 
+        @logged_action("永久删除")
         def delete_permanently(self, entries):
             failures = []
             for entry in entries:
@@ -995,6 +1096,7 @@ def run_gui(args, cfg, directory):
             self.selection_anchor = None
             self.selection_changed()
 
+        @logged_action("拖放项目")
         def drop_selection(self, target_entry):
             target = self.owner.drop_target(target_entry)
             if not target:
@@ -1025,7 +1127,9 @@ def run_gui(args, cfg, directory):
             if failures:
                 self.show_error("未能全部移动", "\n".join(failures))
 
+        @logged_action("显示错误弹窗")
         def show_error(self, title, message):
+            LOG.error("%s：%s", title, message)
             dialog = Gtk.MessageDialog(transient_for=self, modal=True, destroy_with_parent=True,
                                        message_type=Gtk.MessageType.ERROR, buttons=Gtk.ButtonsType.CLOSE,
                                        text=title)
@@ -1033,6 +1137,7 @@ def run_gui(args, cfg, directory):
             dialog.run()
             dialog.destroy()
 
+        @logged_action("打开桌面设置")
         def show_desktop_settings(self):
             if open_mnws_config("desktop"):
                 return
@@ -1069,6 +1174,7 @@ def run_gui(args, cfg, directory):
             grid.attach(icon_label, 0, 2, 1, 1)
             grid.attach(icons, 1, 2, 1, 1)
             dialog.get_content_area().add(grid)
+            dialog.connect("response", lambda w, result: LOG.info("弹窗响应：%s，结果=%s", w.get_title(), result))
             dialog.show_all()
 
             if dialog.run() == Gtk.ResponseType.ACCEPT:
@@ -1090,6 +1196,7 @@ def run_gui(args, cfg, directory):
                     return f"{value:,.0f} {unit}" if unit == "B" else f"{value:,.1f} {unit}"
                 value /= 1024
 
+        @logged_action("打开属性")
         def show_properties(self):
             entries = self.chosen_entries()
             if not entries:
@@ -1121,17 +1228,21 @@ def run_gui(args, cfg, directory):
                 grid.attach(value_label, 1, index, 1, 1)
             dialog.get_content_area().add(grid)
             dialog.connect("response", lambda widget, _response: widget.destroy())
+            dialog.connect("response", lambda w, result: LOG.info("弹窗响应：%s，结果=%s", w.get_title(), result))
             dialog.show_all()
             return dialog
 
+        @logged_action("全选")
         def select_all(self):
             self.selection = set(self.rects)
             self.selection_changed()
 
+        @logged_action("取消选择")
         def clear_selection(self):
             self.selection.clear()
             self.selection_changed()
 
+        @logged_action("打开选中项目")
         def open_selected(self):
             if self.launch_dialog:
                 self.launch_dialog.present()
@@ -1140,6 +1251,7 @@ def run_gui(args, cfg, directory):
             self.launch_time = Gtk.get_current_event_time()
             self.process_open_queue()
 
+        @logged_action("重置布局")
         def reset_layout(self):
             self.owner.rearrange()
 
@@ -1181,6 +1293,7 @@ def run_gui(args, cfg, directory):
                 GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, sig, self.on_signal)
             GLib.unix_signal_add(GLib.PRIORITY_DEFAULT, signal.SIGUSR1, self.on_toggle_signal)
 
+        @logged_action("接收停止信号")
         def on_signal(self):
             self.quit()
             return False
@@ -1253,6 +1366,7 @@ def run_gui(args, cfg, directory):
                 view.invalidate_icons()
 
         def refresh(self):
+            LOG.debug("刷新桌面文件列表")
             if self.refresh_pending:
                 GLib.source_remove(self.refresh_pending)
                 self.refresh_pending = 0
@@ -1330,9 +1444,6 @@ def run_gui(args, cfg, directory):
             self.views = [DesktopWindow(self, m, k) for m, k in targets]
             if self.overview_active:
                 self.overview_changed(True)
-            if self.hidden:
-                for view in self.views:
-                    view.hide()
             return False
 
         def save_state(self):
@@ -1342,17 +1453,20 @@ def run_gui(args, cfg, directory):
             except OSError as exc:
                 LOG.warning("布局保存失败: %s", exc)
 
+        @logged_action("修改排序")
         def set_sort(self, **changes):
             for key, value in changes.items():
                 if key in ("sort_by", "sort_descending", "folders_first"):
                     setattr(cfg, key, value)
             self.rearrange()
 
+        @logged_action("重新排列")
         def rearrange(self):
             self.positions.clear()
             self.refresh()
             self.save_state()
 
+        @logged_action("修改图标大小")
         def change_icon_size(self, size):
             sizes = {32: (96, 92), 48: (112, 104), 64: (132, 124)}
             width, height = sizes[size]
@@ -1365,6 +1479,7 @@ def run_gui(args, cfg, directory):
             self.refresh()
             self.save_state()
 
+        @logged_action("修改隐藏文件显示")
         def change_hidden_files(self, show):
             cfg.show_hidden = show
             self.refresh()
@@ -1392,6 +1507,7 @@ def run_gui(args, cfg, directory):
                         return ("folder", candidate)
             return None
 
+        @logged_action("应用桌面设置")
         def apply_desktop_settings(self, family=None, font_size=None, icon_size=None):
             if family:
                 cfg.font_family = family
@@ -1407,6 +1523,7 @@ def run_gui(args, cfg, directory):
             self.refresh()
             self.save_state()
 
+        @logged_action("打开文件管理器定位文件")
         def reveal_files(self, entries):
             uris = [entry.path.as_uri() for entry in entries]
             if not uris:
@@ -1426,23 +1543,42 @@ def run_gui(args, cfg, directory):
         def toggle(self):
             self.set_hidden(not self.hidden)
 
+        @logged_action("修改桌面图标显隐")
         def set_hidden(self, hidden):
             hidden = bool(hidden)
             if self.hidden == hidden:
                 return
             self.hidden = hidden
+            LOG.info("桌面图标隐藏状态：%s", hidden)
             for view in self.views:
                 if view.menu:
                     view.menu.popdown()
                 view.press = view.press_key = view.marquee = None
                 view.dragging = False
                 view.drag_point = None
+                view.selection.clear()
                 view.fade.set_hidden(self.hidden)
                 view.apply_input_region()
 
+        @logged_action("打开终端")
+        def open_terminal(self):
+            import subprocess
+            executable = next((path for name in ("xdg-terminal-exec", "kitty", "foot", "alacritty", "konsole", "gnome-terminal", "xterm")
+                               if (path := shutil.which(name))), None)
+            if executable is None:
+                LOG.warning("未找到可用的终端程序")
+                return
+            try:
+                process = subprocess.Popen([executable], cwd=directory, start_new_session=True)
+                LOG.info("终端启动请求已提交：%s，PID=%s", executable, process.pid)
+            except OSError as exc:
+                LOG.warning("打开终端失败: %s", exc)
+
+        @logged_action("打开桌面文件夹")
         def open_directory(self):
             try:
                 open_in_thunar(directory.as_uri(), Gdk.Display.get_default().get_app_launch_context())
+                LOG.info("桌面文件夹打开请求已提交：%s", directory)
             except Exception as exc:
                 LOG.warning("打开桌面文件夹失败: %s", exc)
 
@@ -1462,6 +1598,7 @@ def run_gui(args, cfg, directory):
                                  "input_rectangles": [] if self.overview_active else [[0, 0, v.area.get_allocated_width(), v.area.get_allocated_height()]]}
                                 for v in self.views]}
 
+        @logged_action("退出桌面")
         def shutdown(self, *_):
             if self.taskbar_watcher:
                 self.taskbar_watcher.close()

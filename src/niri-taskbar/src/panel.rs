@@ -30,11 +30,13 @@ pub fn connect_panel_menu(toplevel: &gtk::Widget) {
         let menu = gtk::Menu::new();
         let style_item = gtk::MenuItem::with_label("任务栏样式设置… (MNWS)");
         style_item.connect_activate(|_| {
+            tracing::info!("打开任务栏设置");
             open_mnws_config();
         });
         menu.append(&style_item);
         let layout_item = gtk::MenuItem::with_label("组件与插件… (MNWS)");
         layout_item.connect_activate(|_| {
+            tracing::info!("打开组件布局设置");
             open_layout_gui();
         });
         menu.append(&layout_item);

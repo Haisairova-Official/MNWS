@@ -278,6 +278,7 @@ class DesktopGuiTests(unittest.TestCase):
             self.assertEqual(saved["preferences"], {
                 "sort_by": "modified", "sort_descending": True, "folders_first": False,
                 "icon_size": 64, "cell_width": 132, "cell_height": 124, "show_hidden": True,
+                "font_family": cfg.font_family, "font_size": cfg.font_size,
             })
             self.launch.assert_not_called()
             self.open_uri.assert_not_called()
@@ -477,7 +478,8 @@ class DesktopGuiTests(unittest.TestCase):
             view.change_page(-1)
             application.activate_action("toggle", None)
             yield lambda: not view.fade.pending
-            self.assertFalse(view.get_visible())
+            self.assertTrue(view.get_visible())
+            self.assertEqual(view.area.get_opacity(), 0.0)
             application.activate_action("toggle", None)
             yield lambda: not view.fade.pending
             self.assertTrue(view.get_visible())
@@ -631,7 +633,52 @@ class DesktopGuiTests(unittest.TestCase):
 
 
 
-    def test_visibility_marker_controls_actual_window_visibility(self):
+    def test_terminal_and_confirmed_exit_menu(self):
+        def scenario(application):
+            yield lambda: self.ready(application)
+            view = application.views[0]
+            menu = view.make_menu(None)
+            items = {item.get_label(): item for item in menu.get_children()
+                     if not isinstance(item, self.Gtk.SeparatorMenuItem)}
+            with patch.object(application, "open_terminal") as terminal:
+                # Rebuild so the callback binds to the test double.
+                menu.destroy()
+                menu = view.make_menu(None)
+                items = {item.get_label(): item for item in menu.get_children()
+                         if not isinstance(item, self.Gtk.SeparatorMenuItem)}
+                with self.assertLogs("desktop-layer", level="INFO") as logs:
+                    items["打开终端"].activate()
+                self.assertTrue(any("菜单操作：打开终端" in line for line in logs.output))
+                terminal.assert_called_once()
+            exit_item = items["退出桌面图标"]
+            self.module.apply_menu_palette(menu, self.Config())
+            self.assertTrue(exit_item.get_style_context().has_class("desktop-exit"))
+            with patch.object(application, "quit") as quit_app:
+                exit_item.activate()
+                quit_app.assert_not_called()
+                dialog = view.exit_dialog
+                self.assertIsNotNone(dialog)
+                self.assertIn("桌面右键功能将失效", dialog.get_property("secondary-text"))
+                entries = [w for w in dialog.get_content_area().get_children() if isinstance(w, self.Gtk.Entry)]
+                import shlex
+                command = shlex.split(entries[0].get_text())
+                self.assertEqual(command[1:], ["desktop", "--start"])
+                import shutil
+                self.assertTrue(shutil.which(command[0]))
+                dialog.response(self.Gtk.ResponseType.CANCEL)
+                quit_app.assert_not_called()
+                self.assertIsNone(view.exit_dialog)
+                exit_item.activate()
+                view.exit_dialog.response(self.Gtk.ResponseType.DELETE_EVENT)
+                quit_app.assert_not_called()
+                exit_item.activate()
+                view.exit_dialog.response(self.Gtk.ResponseType.ACCEPT)
+                quit_app.assert_called_once()
+            menu.destroy()
+            view.close()
+        self.run_preview(self.Config(), scenario)
+
+    def test_hidden_icons_keep_desktop_menu_available(self):
         from desktop_layer.visibility import MarkerVisibility
         marker = self.root / "taskbar-hidden"
         def scenario(application):
@@ -640,7 +687,7 @@ class DesktopGuiTests(unittest.TestCase):
             application.taskbar_watcher = MarkerVisibility(marker, application.set_hidden).start()
             self.assertFalse(application.hidden)
             marker.touch()
-            yield lambda: application.hidden and not view.get_mapped()
+            yield lambda: application.hidden and not view.fade.pending
             application.taskbar_watcher.sync()
             self.assertTrue(application.hidden)
             marker.unlink()
@@ -648,7 +695,7 @@ class DesktopGuiTests(unittest.TestCase):
             self.assertTrue(view.rects)
             application.set_hidden(True)
             self.assertTrue(view.get_mapped(), "fade-out must keep drawing until finished")
-            self.assertFalse(view.area.get_sensitive())
+            self.assertTrue(view.area.get_sensitive())
             yield lambda: 0.1 < view.area.get_opacity() < 0.9
             opacity = view.area.get_opacity()
             application.set_hidden(False)
@@ -657,13 +704,27 @@ class DesktopGuiTests(unittest.TestCase):
             self.assertTrue(view.get_mapped())
             self.assertEqual(view.area.get_opacity(), 1.0)
             application.set_hidden(True)
-            yield lambda: not view.get_mapped()
+            yield lambda: not view.fade.pending
+            self.assertTrue(view.get_mapped())
             self.assertEqual(view.area.get_opacity(), 0.0)
+            menu = view.make_menu(next(iter(view.rects)))
+            labels = [child.get_label() for child in menu.get_children() if not isinstance(child, self.Gtk.SeparatorMenuItem)]
+            self.assertEqual(labels, ["显示桌面图标", "打开终端", "打开桌面文件夹"])
+            menu.destroy()
+            with patch.object(view, "popup") as popup:
+                event = SimpleNamespace(button=3, x=20, y=20)
+                self.assertTrue(view.button_press(view.area, event))
+                popup.assert_called_once_with(event, None)
+                event.button = 1
+                self.assertFalse(view.button_press(view.area, event))
+            with patch("subprocess.Popen") as launch_terminal:
+                application.open_terminal()
+                self.assertEqual(launch_terminal.call_args.kwargs["cwd"], self.desktop)
             self.assertEqual(view.fade.pending, 0)
             application.set_hidden(False)
             yield lambda: 0.1 < view.area.get_opacity() < 0.9
             application.set_hidden(True)
-            yield lambda: not view.get_mapped()
+            yield lambda: not view.fade.pending
             application.set_hidden(False)
             yield lambda: not view.fade.pending
             view.close()

@@ -81,7 +81,16 @@ impl Niri {
 // This can't be used for event streams, since the stream callback is thrown away in this function.
 #[tracing::instrument(level = "TRACE", err)]
 fn request(request: Request) -> Result<Reply, Error> {
-    socket()?.send(request).map_err(Error::NiriIpc)
+    let action = matches!(&request, Request::Action(_));
+    if action { tracing::info!(?request, "窗口操作请求"); }
+    let result = socket().and_then(|mut socket| socket.send(request).map_err(Error::NiriIpc));
+    if action {
+        match &result {
+            Ok(reply) => tracing::info!(?reply, "窗口操作响应"),
+            Err(error) => tracing::error!(%error, "窗口操作失败"),
+        }
+    }
+    result
 }
 
 // Helper to connect to the Niri socket.
